@@ -1107,10 +1107,130 @@
     return 'Could not read the schedule' + (err && err.message ? (' — ' + err.message) : '') + '.';
   }
 
-  /* Best-effort parse: for any line mentioning a known manufacturer, split the line's
-     items into "before / manufacturer / after" using x-position gaps as column breaks,
-     and offer that as a candidate Reference / Manufacturer / Model row. */
-  function parseEquipmentCandidates(lines){
+  function dedupeCandidates(list){
+    var seen = {};
+    return list.filter(function(c){
+      var key = (c.ref+'|'+c.manufacturer+'|'+c.model).toLowerCase();
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
+  /* Look at a section's header line (and the line right after it, in case OCR split the
+     header from the manufacturer name into two lines) for one of KNOWN_MANUFACTURERS —
+     Victorian Projects' WSD schedules put the manufacturer top-right of the table title
+     (e.g. "AC UNIT SCHEDULE ... DAIKIN", "FAN SCHEDULE ... FANTECH"), not per row. */
+  function extractSectionManufacturer(lines, headerIdx){
+    var probe = [lines[headerIdx], lines[headerIdx + 1]].filter(Boolean);
+    for (var i = 0; i < probe.length; i++){
+      var lower = probe[i].text.toLowerCase();
+      var brand = KNOWN_MANUFACTURERS.find(function(m){ return lower.indexOf(m.toLowerCase()) !== -1; });
+      if (brand) return brand;
+    }
+    return '';
+  }
+
+  /* Find a "label: value" row within a section by matching labelRe against the row's text,
+     then mapping how many characters the label consumed back onto that row's items — the
+     items after that point are the value(s). If the label turns out to be the WHOLE line
+     (common when a table cell's border makes OCR/pdf.js treat the label and its value as
+     separate lines), fall back to the very next line's items instead. Pass singleValue:true
+     for a label known to hold exactly one token (WSD reference / model numbers never
+     contain spaces) — that also protects against accidentally picking up a neighbouring
+     table's text that happens to share the same row of the page (e.g. the AC Unit Schedule
+     and Grille Schedule sitting side by side at the same height). */
+  function findLabelRow(sectionLines, labelRe, opts){
+    for (var i = 0; i < sectionLines.length; i++){
+      var line = sectionLines[i];
+      var m = labelRe.exec(line.text);
+      if (!m) continue;
+      var consumed = m.index + m[0].length;
+      var pos = 0, cut = line.items.length;
+      for (var j = 0; j < line.items.length; j++){
+        pos += line.items[j].str.length + 1;
+        if (pos >= consumed){ cut = j + 1; break; }
+      }
+      var rest = line.items.slice(cut);
+      if (!rest.length && sectionLines[i + 1]) rest = sectionLines[i + 1].items.slice(0);
+      if (opts && opts.singleValue) rest = rest.slice(0, 1);
+      return { line: line, valueItems: rest };
+    }
+    return null;
+  }
+
+  /* Match a multi-column row's items (e.g. a "MODEL" row under a Fan Schedule) to fixed
+     column x-positions established by an earlier row (e.g. that table's "UNIT NO." row),
+     by nearest x-position — tolerant of the odd pixel of OCR jitter between rows. */
+  function assignToColumns(items, anchors){
+    var out = anchors.map(function(){ return ''; });
+    items.forEach(function(item){
+      var bestIdx = -1, bestDist = Infinity;
+      anchors.forEach(function(ax, idx){
+        var d = Math.abs(item.x - ax);
+        if (d < bestDist){ bestDist = d; bestIdx = idx; }
+      });
+      if (bestIdx !== -1) out[bestIdx] = (out[bestIdx] ? out[bestIdx] + ' ' : '') + item.str;
+    });
+    return out.map(function(s){ return s.trim(); });
+  }
+
+  /* Structured pass: recognise Victorian Projects' standard WSD table shapes directly,
+     rather than guessing from a flat "manufacturer somewhere on this line" search —
+     - AC Unit Schedule: one indoor/outdoor unit per table block, label rows down the left,
+       a single value in each (per the same indoor-unit convention used for the Claude
+       image-read prompt above: use the INDOOR unit's reference and model).
+     - Fan Schedule: several fans as columns across one table, with a "UNIT NO." row fixing
+       each column's position and a "MODEL" row supplying each column's model number.
+     Grille Schedule is deliberately not parsed here — it has no manufacturer's model
+     number per item, just dimensions, so there's nothing reliable to add automatically. */
+  function parseStructuredSchedule(lines){
+    var headers = [];
+    lines.forEach(function(l, i){
+      if (/\bAC\s*UNIT\s*SCHEDULE\b/i.test(l.text)) headers.push({ i: i, kind: 'ac' });
+      else if (/\bFAN\s*SCHEDULE\b/i.test(l.text)) headers.push({ i: i, kind: 'fan' });
+    });
+    var candidates = [];
+    headers.forEach(function(h, hi){
+      var endIdx = (hi + 1 < headers.length) ? headers[hi + 1].i : lines.length;
+      var sectionLines = lines.slice(h.i, endIdx);
+      var manufacturer = extractSectionManufacturer(lines, h.i);
+      var page = sectionLines[0] ? sectionLines[0].page : undefined;
+
+      if (h.kind === 'ac'){
+        var refRow = findLabelRow(sectionLines, /INDOOR\s*UNIT\s*REFERENCE/i, { singleValue: true })
+          || findLabelRow(sectionLines, /\bUNIT\s*REFERENCE\b/i, { singleValue: true });
+        var modelRow = findLabelRow(sectionLines, /MODEL\s*INDOOR\s*UNIT/i, { singleValue: true })
+          || findLabelRow(sectionLines, /\bMODEL\b/i, { singleValue: true });
+        var ref = refRow ? refRow.valueItems.map(function(i){ return i.str; }).join(' ').trim() : '';
+        var model = modelRow ? modelRow.valueItems.map(function(i){ return i.str; }).join(' ').trim() : '';
+        if (ref || model){
+          candidates.push({ id: uid(), ref: ref, type: 'AC', manufacturer: manufacturer, model: model, page: page, include: true });
+        }
+      } else if (h.kind === 'fan'){
+        var unitRow = findLabelRow(sectionLines, /UNIT\s*NO\.?/i);
+        if (unitRow && unitRow.valueItems.length){
+          var anchors = unitRow.valueItems.map(function(i){ return i.x; });
+          var refs = unitRow.valueItems.map(function(i){ return i.str; });
+          var modelRow2 = findLabelRow(sectionLines, /^MODEL\b/i);
+          var models = modelRow2 ? assignToColumns(modelRow2.valueItems, anchors) : [];
+          refs.forEach(function(ref, idx){
+            var model2 = models[idx] || '';
+            if (!ref && !model2) return;
+            candidates.push({ id: uid(), ref: ref, type: 'Fan', manufacturer: manufacturer, model: model2, page: page, include: true });
+          });
+        }
+      }
+    });
+    return dedupeCandidates(candidates);
+  }
+
+  /* Best-effort fallback for WSDs that don't follow the structured layout above: for any
+     line mentioning a known manufacturer, split the line's items into "before / manufacturer /
+     after" and offer that as a candidate Reference / Manufacturer / Model row. Weaker than
+     the structured pass (this is the original approach, kept for schedules formatted as one
+     flat row per item rather than Victorian Projects' label-rows-per-unit table). */
+  function parseFlatRowCandidates(lines){
     var candidates = [];
     lines.forEach(function(line){
       var lower = line.text.toLowerCase();
@@ -1134,14 +1254,13 @@
         include: true
       });
     });
-    // de-duplicate identical ref+manufacturer+model guesses (common with repeated schedule rows)
-    var seen = {};
-    return candidates.filter(function(c){
-      var key = (c.ref+'|'+c.manufacturer+'|'+c.model).toLowerCase();
-      if (seen[key]) return false;
-      seen[key] = true;
-      return true;
-    });
+    return dedupeCandidates(candidates);
+  }
+
+  function parseEquipmentCandidates(lines){
+    var structured = parseStructuredSchedule(lines);
+    if (structured.length) return structured;
+    return parseFlatRowCandidates(lines);
   }
 
   function wsdScanCandidatesHtml(){
