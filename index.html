@@ -495,6 +495,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1056,6 +1057,31 @@
     return await new Promise(function(resolve){ canvas.toBlob(resolve, 'image/png'); });
   }
 
+  /* Free, in-browser OCR fallback (Tesseract.js) for a WSD page whose schedule table is a
+     scanned/embedded picture rather than real text — used on GitHub Pages where Claude's
+     own image-reading capability isn't available. Renders the page at a higher resolution
+     than the Claude image path (OCR does better with more pixels), runs Tesseract, then
+     reshapes its word/line output into the same {page, items:[{str,x}], text} shape that
+     extractPdfLines() produces so it can be fed straight into parseEquipmentCandidates() —
+     same column-guessing heuristics, same "review before adding" behaviour either way.
+     Accuracy depends on scan quality — always shown as editable candidates, never auto-added. */
+  async function ocrPdfPageToLines(doc, pageNum, onProgress){
+    if (!window.Tesseract) throw new Error('OCR reader did not load — check your connection and try again');
+    var blob = await renderPdfPageToBlob(doc, pageNum, 3.5);
+    var result = await window.Tesseract.recognize(blob, 'eng', {
+      logger: function(m){
+        if (onProgress && m && m.status === 'recognizing text' && typeof m.progress === 'number'){
+          onProgress(Math.round(m.progress * 100));
+        }
+      }
+    });
+    var lines = (result && result.data && result.data.lines) || [];
+    return lines.map(function(line){
+      var items = (line.words || []).map(function(w){ return { str: w.text, x: w.bbox ? w.bbox.x0 : 0 }; });
+      return { page: pageNum, items: items, text: line.text || items.map(function(i){ return i.str; }).join(' ') };
+    });
+  }
+
   var WSD_IMAGE_SCAN_PROMPT = '' +
     'This image is one page from a mechanical services work order/drawing set (a WSD). ' +
     'It shows an equipment schedule table — this may include an AC Unit Schedule, a Fan Schedule, and/or a Grille Schedule. ' +
@@ -1146,6 +1172,20 @@
           '</div>' +
           '</div>' +
         '</div>';
+      } else if (window.Tesseract) {
+        imageBanner = '<div class="info-banner" style="margin:10px 0;">' +
+          '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
+          '<div>No typed text found for the schedule — ' + pageWord + ' ' + imagePages.join(', ') + ' looks like a scanned or embedded picture of the table. Try reading it with OCR — it\'s automatic, but always double-check the results below since scans can be misread:' +
+          '<div style="margin-top:8px;">' +
+            imagePages.map(function(p){
+              var busy = scan.imageScanning === p;
+              return '<button type="button" class="btn" style="margin:0 6px 6px 0;" data-wsd-ocr-scan="' + p + '"' + (busy ? ' disabled' : '') + '>' +
+                (busy ? ('Reading page ' + p + (scan.ocrProgress ? (' — ' + scan.ocrProgress + '%') : '…')) : 'Read page ' + p + ' with OCR') +
+              '</button>';
+            }).join('') +
+          '</div>' +
+          '</div>' +
+        '</div>';
       } else {
         imageBanner = '<div class="field-note" style="margin:10px 0;">' + pageWord + ' ' + imagePages.join(', ') + ' look' + (imagePages.length>1?'':'s') + ' like a scanned or embedded picture of the table — reading images isn\'t available in this view. Send the WSD PDF to Claude in chat instead and it can read the schedule and add the rows for you directly.</div>';
       }
@@ -1158,7 +1198,7 @@
               '<td><input class="eq-field" data-cand-field="ref" value="' + escapeHtml(c.ref) + '" placeholder="AC-1.1" /></td>' +
               '<td><input class="eq-field" data-cand-field="manufacturer" value="' + escapeHtml(c.manufacturer) + '" placeholder="Daikin" /></td>' +
               '<td><input class="eq-field" data-cand-field="model" value="' + escapeHtml(c.model) + '" placeholder="CDXP35RVMA" /></td>' +
-              '<td style="color:var(--ink-faint);font-size:11.5px;">p.' + c.page + '</td>' +
+              '<td style="color:var(--ink-faint);font-size:11.5px;">p.' + c.page + (c.viaOcr ? ' <span title="Read by OCR — double-check against the drawing" style="color:var(--warn);font-weight:600;">OCR</span>' : '') + '</td>' +
             '</tr>';
         }).join('')
       : '<tr><td colspan="5" style="color:var(--ink-faint);font-size:12.5px;padding:12px 8px;">No equipment schedule rows recognised in that PDF' + (imagePages.length ? '.' : ' — add them manually below, or try a different file.') + '</td></tr>';
@@ -1534,6 +1574,43 @@
           scan.imageScanning = null;
           renderJobDetail();
           toast(imageScanErrorMessage(err));
+        });
+      });
+    });
+
+    // read a scanned schedule PAGE IMAGE with free in-browser OCR (Tesseract.js) — the
+    // GitHub Pages fallback for WSDs whose schedule table is a scanned/embedded picture,
+    // used when Claude's own image-reading capability (sampleCap) isn't available here
+    document.querySelectorAll('[data-wsd-ocr-scan]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var pageNum = Number(el.getAttribute('data-wsd-ocr-scan'));
+        var scan = state.wsdScan;
+        if (!scan || !scan.doc) return;
+        if (!window.Tesseract){ toast('OCR reader isn\'t available right now'); return; }
+        scan.imageScanning = pageNum;
+        scan.ocrProgress = 0;
+        renderJobDetail();
+        toast('Reading page ' + pageNum + ' with OCR — this can take up to a minute…');
+        ocrPdfPageToLines(scan.doc, pageNum, function(pct){
+          if (state.wsdScan) { state.wsdScan.ocrProgress = pct; renderJobDetail(); }
+        }).then(function(lines){
+          var found = parseEquipmentCandidates(lines).map(function(c){
+            c.page = pageNum;
+            c.viaOcr = true;
+            return c;
+          });
+          scan.imageScanning = null;
+          scan.ocrProgress = null;
+          scan.candidates = (scan.candidates || []).concat(found);
+          renderJobDetail();
+          toast(found.length
+            ? ('OCR found ' + found.length + ' row' + (found.length===1?'':'s') + ' on page ' + pageNum + ' — check each one carefully against the drawing before adding.')
+            : ('OCR could not confidently match any equipment rows on page ' + pageNum + ' — try "+ Add row" to enter them manually.'));
+        }).catch(function(err){
+          scan.imageScanning = null;
+          scan.ocrProgress = null;
+          renderJobDetail();
+          toast('Could not read that page with OCR' + (err && err.message ? (' — ' + err.message) : '') + '.');
         });
       });
     });
