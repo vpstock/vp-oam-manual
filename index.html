@@ -1,0 +1,2722 @@
+<title>O&amp;M Manual Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --accent:#2b6cb0;
+    --accent-deep:#173350;
+    --accent-soft:#dbe9f8;
+    --accent-soft-ink:#1c4d78;
+    --bg:#f3f6f9;
+    --surface:#ffffff;
+    --surface-2:#eef2f6;
+    --ink:#1b2530;
+    --ink-soft:#5c6b7a;
+    --ink-faint:#8996a3;
+    --border:#dde4ea;
+    --border-strong:#c4ced7;
+    --success:#1f7a4d;
+    --success-soft:#e1f3e8;
+    --warn:#a2660a;
+    --warn-soft:#fbedd6;
+    --pending:#6b7684;
+    --pending-soft:#e7ebee;
+    --danger:#a4342f;
+    --shadow-sm: 0 1px 2px rgba(23,51,80,.06);
+    --shadow-md: 0 4px 16px rgba(23,51,80,.10);
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --accent:#5b9bdb;
+      --accent-deep:#bcdcff;
+      --accent-soft:#193049;
+      --accent-soft-ink:#a9d3fb;
+      --bg:#11161d;
+      --surface:#181f28;
+      --surface-2:#1f2833;
+      --ink:#e7edf3;
+      --ink-soft:#a7b3bf;
+      --ink-faint:#76838f;
+      --border:#2a333e;
+      --border-strong:#3a4550;
+      --success:#4cbb82;
+      --success-soft:#173226;
+      --warn:#d9a441;
+      --warn-soft:#332608;
+      --pending:#8b96a3;
+      --pending-soft:#232b34;
+      --danger:#e0726c;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+      --shadow-md: 0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --accent:#5b9bdb;
+    --accent-deep:#bcdcff;
+    --accent-soft:#193049;
+    --accent-soft-ink:#a9d3fb;
+    --bg:#11161d;
+    --surface:#181f28;
+    --surface-2:#1f2833;
+    --ink:#e7edf3;
+    --ink-soft:#a7b3bf;
+    --ink-faint:#76838f;
+    --border:#2a333e;
+    --border-strong:#3a4550;
+    --success:#4cbb82;
+    --success-soft:#173226;
+    --warn:#d9a441;
+    --warn-soft:#332608;
+    --pending:#8b96a3;
+    --pending-soft:#232b34;
+    --danger:#e0726c;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+    --shadow-md: 0 8px 24px rgba(0,0,0,.4);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  ::selection{background:var(--accent-soft);}
+  .mono{font-family:'IBM Plex Mono', 'SF Mono', monospace;}
+  button{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  /* ---------- shell ---------- */
+  .shell{display:flex;min-height:100vh;}
+
+  .sidebar{
+    width:288px;flex:none;
+    background:var(--surface);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;
+    height:100vh;position:sticky;top:0;
+  }
+  .brand{
+    padding:20px 20px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .brand-mark{
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand-glyph{
+    width:34px;height:34px;border-radius:8px;flex:none;
+    background:linear-gradient(155deg, var(--accent) 0%, var(--accent-deep) 100%);
+    position:relative;overflow:hidden;
+    box-shadow:var(--shadow-sm);
+  }
+  .brand-glyph svg{position:absolute;inset:0;}
+  .brand-name{font-weight:700;font-size:15.5px;letter-spacing:-.01em;line-height:1.15;}
+  .brand-sub{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+
+  .sidebar-tools{padding:14px 16px 8px;}
+  .new-job-btn{
+    width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--accent);
+    background:var(--accent);color:#fff;font-weight:600;font-size:13.5px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    transition:filter .12s ease, transform .05s ease;
+  }
+  .new-job-btn:hover{filter:brightness(1.07);}
+  .new-job-btn:active{transform:scale(.98);}
+
+  .job-list{flex:1;overflow-y:auto;padding:4px 10px 16px;}
+  .job-list-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);padding:14px 10px 6px;}
+  .job-item{
+    padding:11px 12px;border-radius:9px;cursor:pointer;margin-bottom:3px;
+    border:1px solid transparent;
+    transition:background .12s ease;
+  }
+  .job-item:hover{background:var(--surface-2);}
+  .job-item.active{background:var(--accent-soft);border-color:var(--accent-soft);}
+  .job-item-name{font-weight:600;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .job-item.active .job-item-name{color:var(--accent-soft-ink);}
+  .job-item-meta{display:flex;align-items:center;gap:6px;margin-top:5px;}
+  .job-item-bar{flex:1;height:4px;border-radius:2px;background:var(--pending-soft);overflow:hidden;}
+  .job-item-bar-fill{height:100%;background:var(--success);border-radius:2px;}
+  .job-item-pct{font-size:10.5px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;}
+  .job-item-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .job-item-done{flex:0 0 auto;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--success);background:var(--success-soft, rgba(34,197,94,.14));border-radius:999px;padding:2px 7px;}
+  .job-item-ago{font-size:10px;color:var(--ink-faint);margin-top:3px;}
+  .dup-warning{display:flex;align-items:flex-start;gap:10px;background:var(--pending-soft);border:1px solid var(--pending-border, rgba(217,119,6,.3));border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;line-height:1.5;}
+  .dup-warning b{display:block;margin-bottom:2px;}
+  .dup-warning-actions{margin-top:6px;display:flex;gap:8px;}
+  .dup-warning button{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;}
+  .dup-warning button:hover{background:var(--surface-2);}
+  .job-empty{padding:20px 12px;color:var(--ink-faint);font-size:12.5px;line-height:1.5;}
+  .job-empty-sm{padding:2px 10px 14px;font-size:11.5px;}
+  .job-list-label-done{color:var(--success);display:flex;align-items:center;gap:5px;}
+  .job-list-label-done::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--success);flex:none;}
+
+  .sidebar-foot{padding:12px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--ink-faint);line-height:1.5;}
+  .sync-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--pending);margin-right:6px;}
+  .sync-dot.live{background:var(--success);}
+
+  /* ---------- main ---------- */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .topbar{
+    padding:18px 32px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    background:var(--surface);position:sticky;top:0;z-index:5;
+  }
+  .topbar-title-row{display:flex;align-items:baseline;gap:12px;min-width:0;}
+  .job-title-input{
+    font-size:21px;font-weight:700;letter-spacing:-.01em;border:none;background:transparent;
+    color:var(--ink);padding:2px 4px;border-radius:6px;min-width:120px;max-width:52ch;
+  }
+  .job-title-input:hover, .job-title-input:focus{background:var(--surface-2);}
+  .doc-no{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-faint);white-space:nowrap;}
+  .topbar-actions{display:flex;gap:10px;align-items:center;flex:none;}
+  .btn{
+    padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+    border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);
+    display:inline-flex;align-items:center;gap:7px;transition:background .12s ease,border-color .12s ease;
+  }
+  .btn:hover{background:var(--surface-2);}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{filter:brightness(1.07);background:var(--accent);}
+  .btn-danger-ghost{color:var(--danger);border-color:transparent;background:transparent;}
+  .btn-danger-ghost:hover{background:var(--warn-soft);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .content{flex:1;overflow-y:auto;padding:28px 32px 80px;}
+  .content-inner{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:22px;}
+
+  /* progress strip */
+  .progress-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 20px;display:flex;align-items:center;gap:18px;box-shadow:var(--shadow-sm);
+  }
+  .progress-ring{flex:none;}
+  .progress-copy{flex:1;}
+  .progress-copy-title{font-weight:600;font-size:14px;}
+  .progress-copy-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .progress-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .chip{
+    font-size:11px;padding:3px 9px;border-radius:99px;font-weight:600;
+    display:inline-flex;align-items:center;gap:5px;
+  }
+  .chip-dot{width:6px;height:6px;border-radius:50%;}
+  .chip.complete{background:var(--success-soft);color:var(--success);}
+  .chip.complete .chip-dot{background:var(--success);}
+  .chip.pending{background:var(--pending-soft);color:var(--pending);}
+  .chip.pending .chip-dot{background:var(--pending);}
+  .chip.awaiting{background:var(--warn-soft);color:var(--warn);}
+  .chip.awaiting .chip-dot{background:var(--warn);}
+
+  /* section cards */
+  .section{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); overflow:hidden;
+  }
+  .section-head{
+    padding:16px 20px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;
+  }
+  .section-num{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);
+    background:var(--accent-soft);color:var(--accent-soft-ink);
+    width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;font-weight:600;
+  }
+  .section-titles{flex:1;min-width:0;}
+  .section-title{font-weight:600;font-size:14.5px;}
+  .section-sub{font-size:12px;color:var(--ink-faint);margin-top:1px;}
+  .section-chevron{color:var(--ink-faint);transition:transform .15s ease;flex:none;}
+  .section.open .section-chevron{transform:rotate(90deg);}
+  .section-body{padding:0 20px 20px;display:none;}
+  .section.open .section-body{display:block;}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;}
+  .field-grid.span-1{grid-template-columns:1fr;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:11.5px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field textarea, .field select{
+    font-family:inherit;font-size:13.5px;padding:9px 11px;border-radius:7px;
+    border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);
+    width:100%;
+  }
+  .field textarea{resize:vertical;min-height:60px;line-height:1.5;}
+  .field input:focus, .field textarea:focus, .field select:focus{border-color:var(--accent);}
+  .field-note{font-size:11px;color:var(--ink-faint);}
+
+  .divider-label{
+    font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);
+    margin:16px 0 8px;padding-top:14px;border-top:1px dashed var(--border);
+  }
+  .divider-label:first-child{border-top:none;padding-top:0;margin-top:0;}
+
+  /* equipment table */
+  .eq-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .eq-table th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);
+    padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;
+  }
+  .eq-table td{padding:5px 8px;border-bottom:1px solid var(--border);}
+  .eq-table input, .eq-table select{
+    border:1px solid transparent;background:transparent;padding:6px 7px;border-radius:6px;font-size:13px;width:100%;font-family:inherit;color:var(--ink);
+  }
+  .eq-table input:hover,.eq-table select:hover{background:var(--surface-2);}
+  .eq-table input:focus,.eq-table select:focus{border-color:var(--accent);background:var(--surface);}
+  .eq-table tr:last-child td{border-bottom:none;}
+  .eq-row-del{background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:4px;border-radius:6px;display:flex;}
+  .eq-row-del:hover{color:var(--danger);background:var(--warn-soft);}
+  .eq-add-row{
+    margin-top:10px;font-size:12.5px;font-weight:600;color:var(--accent);background:none;border:1px dashed var(--border-strong);
+    padding:8px 12px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  }
+  .eq-add-row:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .eq-add-row input[type="file"]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+
+  .file-list{display:flex;flex-direction:column;gap:6px;margin-bottom:4px;}
+  .file-row{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface-2);
+  }
+  .file-name{flex:1;font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-size{font-size:11px;color:var(--ink-faint);}
+  .file-btn{background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:5px;border-radius:6px;display:flex;}
+  .file-btn:hover{background:var(--surface);color:var(--accent);}
+  .file-btn-del:hover{color:var(--danger);}
+
+  .link-add-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .link-add-row .link-add-label{flex:1 1 220px;font-family:inherit;font-size:13px;padding:8px 10px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);}
+  .link-add-row .link-add-url{flex:2 1 260px;font-family:inherit;font-size:13px;padding:8px 10px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);}
+  .link-add-row .link-add-label:focus, .link-add-row .link-add-url:focus{border-color:var(--accent);}
+
+  /* status pills for appendix sections */
+  .status-row{display:flex;gap:8px;margin-bottom:12px;}
+  .status-btn{
+    flex:1;padding:9px 8px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);
+    font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);text-align:center;
+    transition:all .1s ease;
+  }
+  .status-btn:hover{background:var(--surface-2);}
+  .status-btn.sel-pending{background:var(--pending-soft);border-color:var(--pending);color:var(--pending);}
+  .status-btn.sel-awaiting{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);}
+  .status-btn.sel-complete{background:var(--success-soft);border-color:var(--success);color:var(--success);}
+
+  .empty-state{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:90px 20px;text-align:center;color:var(--ink-faint);gap:14px;
+  }
+  .empty-state svg{opacity:.55;}
+  .empty-state h2{font-size:17px;color:var(--ink);font-weight:600;margin:0;}
+  .empty-state p{font-size:13.5px;max-width:38ch;line-height:1.5;margin:0;}
+
+  .info-banner{
+    display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);color:var(--accent-soft-ink);
+    border-radius:8px;padding:11px 14px;font-size:12.5px;line-height:1.5;
+  }
+  .info-banner svg{flex:none;margin-top:1px;}
+  .info-banner b{font-weight:700;}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(8px);
+    background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;
+    box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(15,23,32,.45);display:flex;align-items:center;justify-content:center;z-index:60;
+    padding:20px;
+  }
+  .modal{background:var(--surface);border-radius:12px;padding:24px;width:100%;max-width:420px;box-shadow:var(--shadow-md);}
+  .modal h3{margin:0 0 4px;font-size:16px;}
+  .modal p{margin:0 0 16px;font-size:13px;color:var(--ink-soft);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+  .modal-lg{max-width:760px;max-height:88vh;display:flex;flex-direction:column;padding:0;}
+  .modal-lg-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:16px 22px;border-bottom:1px solid var(--border);flex:none;
+  }
+  .modal-lg-head h3{margin:0;font-size:15.5px;}
+  .modal-lg-close{
+    background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:6px;border-radius:7px;display:flex;
+  }
+  .modal-lg-close:hover{background:var(--surface-2);color:var(--ink);}
+  .modal-lg-body{overflow-y:auto;padding:22px;flex:1;}
+  .modal-lg-foot{
+    display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--border);flex:none;
+  }
+
+  .preview-doc{font-size:13px;line-height:1.6;color:var(--ink);background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .preview-doc > *{padding-left:34px;padding-right:34px;}
+  .preview-cover{
+    text-align:center;padding:64px 0 40px;margin-bottom:0;background:#fff;
+  }
+  .preview-cover .pc-logo-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:18px;}
+  .preview-cover .pc-logo{height:46px;width:auto;}
+  .preview-cover .pc-brand{font-size:22px;font-weight:700;color:#141414;letter-spacing:.01em;}
+  .preview-cover .pc-bar{height:5px;background:#141414;margin:18px 0;}
+  .preview-cover .pc-title{font-size:15px;margin-top:26px;color:#141414;}
+  .preview-cover .pc-job{font-size:18px;font-weight:700;margin-top:8px;color:#141414;}
+  .preview-cover .pc-doc{font-size:11.5px;color:var(--ink-faint);margin-top:8px;font-family:'IBM Plex Mono',monospace;}
+  .preview-cover .pc-address{font-size:11.5px;color:#3a3a3a;margin-top:70px;line-height:1.7;}
+  .preview-pagebreak{border-top:2px dashed var(--border);margin:0;position:relative;}
+  .preview-pagebreak::after{
+    content:'Page break';position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+    background:var(--surface,#fff);padding:0 10px;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);
+  }
+  .preview-innerhead{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+    padding-top:22px;padding-bottom:12px;margin-bottom:10px;border-bottom:2px solid #141414;
+  }
+  .preview-innerhead .pih-title{font-size:12px;font-weight:700;color:#141414;}
+  .preview-innerhead .pih-job{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+  .preview-innerhead .pih-logo{height:22px;width:auto;flex:none;}
+  .preview-h{
+    font-size:13.5px;font-weight:700;color:var(--accent-deep);margin:22px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);
+  }
+  .preview-h:first-child{margin-top:0;}
+  .preview-sub{font-size:12.5px;font-weight:700;color:var(--accent);margin:14px 0 6px;}
+  .preview-doc p{margin:0 0 8px;}
+  .preview-table{width:100%;border-collapse:collapse;margin:8px 0 4px;font-size:12.5px;}
+  .preview-table th, .preview-table td{border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:top;}
+  .preview-table th{background:var(--surface-2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+  .preview-appendix{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
+  .preview-appendix-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .preview-appendix-title{font-weight:600;font-size:13px;}
+  .preview-mini-list{margin:6px 0 0;padding-left:18px;font-size:12.5px;}
+  .preview-mini-list li{margin-bottom:2px;}
+  .preview-mini-list a{color:var(--accent);text-decoration:none;}
+  .preview-empty{color:var(--ink-faint);font-style:italic;}
+
+  .mobile-bar{display:none;}
+
+  @media (max-width: 640px){
+    .mobile-bar{
+      display:flex;align-items:center;gap:10px;padding:12px 16px;
+      border-bottom:1px solid var(--border);background:var(--surface);
+      position:sticky;top:0;z-index:20;
+    }
+    .mobile-bar-btn{
+      border:1px solid var(--border-strong);background:var(--surface);border-radius:7px;
+      padding:7px 9px;cursor:pointer;color:var(--ink);display:flex;
+    }
+    .mobile-bar-title{font-weight:700;font-size:14px;}
+    .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:40;transform:translateX(-100%);transition:transform .18s ease;box-shadow:var(--shadow-md);}
+    .sidebar.open{transform:translateX(0);}
+    .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,32,.4);z-index:35;}
+    .sidebar-backdrop.show{display:block;}
+    .field-grid{grid-template-columns:1fr;}
+    .content{padding:20px 16px 80px;}
+    .topbar{padding:14px 16px;flex-wrap:wrap;}
+  }
+</style>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <div class="brand-glyph">
+          <svg viewBox="0 0 34 34" width="34" height="34">
+            <polyline points="2,24 10,14 15,19 22,8 32,20" fill="none" stroke="#dff0ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+            <polyline points="2,27 12,18 18,23 24,13 32,25" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">Victorian Projects</div>
+          <div class="brand-sub">O&amp;M Manual Builder</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-tools">
+      <button class="new-job-btn" id="newJobBtn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1V13M1 7H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        New job manual
+      </button>
+    </div>
+    <div class="job-list" id="jobList">
+      <div class="job-list-label">Jobs</div>
+    </div>
+    <div class="sidebar-foot" id="syncFoot"><span class="sync-dot"></span>Connecting…</div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <main class="main">
+    <div class="mobile-bar">
+      <button class="mobile-bar-btn" id="sidebarToggle" aria-label="Open jobs list">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div class="mobile-bar-title">O&amp;M Manual Builder</div>
+    </div>
+    <div class="topbar" id="topbar" style="display:none;">
+      <div class="topbar-title-row">
+        <input class="job-title-input" id="jobNameInput" placeholder="Job name" />
+        <span class="doc-no mono" id="docNoLabel">VP-OAM</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-danger-ghost" id="deleteJobBtn" title="Delete this job">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4H12M5.5 4V2.5C5.5 2 5.9 1.6 6.4 1.6H7.6C8.1 1.6 8.5 2 8.5 2.5V4M10.5 4L10 11.5C9.96 12.1 9.46 12.6 8.86 12.6H5.14C4.54 12.6 4.04 12.1 4 11.5L3.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="btn" id="previewBtn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7C1 7 3.5 2.5 7 2.5C10.5 2.5 13 7 13 7C13 7 10.5 11.5 7 11.5C3.5 11.5 1 7 1 7Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.4"/></svg>
+          Preview
+        </button>
+        <button class="btn" id="saveBtn" title="Save now">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2.5C2 2.2 2.2 2 2.5 2H9.5L12 4.5V11.5C12 11.8 11.8 12 11.5 12H2.5C2.2 12 2 11.8 2 11.5V2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4.5 2V5H9V2" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4 12V8.5C4 8.2 4.2 8 4.5 8H9.5C9.8 8 10 8.2 10 8.5V12" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          Save
+        </button>
+        <button class="btn btn-primary" id="exportBtn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1V9.5M7 9.5L3.8 6.3M7 9.5L10.2 6.3M2 11.5V12C2 12.55 2.45 13 3 13H11C11.55 13 12 12.55 12 12V11.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Export manual (PDF)
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="content-inner" id="contentInner">
+        <div class="empty-state" id="emptyState">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <rect x="10" y="6" width="44" height="54" rx="4" stroke="var(--border-strong)" stroke-width="2"/>
+            <path d="M18 18H46M18 27H46M18 36H36" stroke="var(--border-strong)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 47L23 52L33 41" stroke="var(--success)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h2>No job selected</h2>
+          <p>Start a new job manual, or pick one from the list, to fill in contact details, the equipment schedule, and track the appendix documents as they come in.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  if (window.pdfjsLib){
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  /* ---------------- constants ---------------- */
+  var LOGO_DATAURL = 'data:image/png;base64,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';
+
+  var CONTRACTOR = {
+    name: "Victorian Projects",
+    address: "1/50-52 Ordish Rd,\nDandenong South VIC 3175",
+    phone: "(03) 9798 7780",
+    fax: "-",
+    email: "-"
+  };
+
+  var APPENDICES = [
+    { key:"technicalData", label:"Appendix 1 — Technical Data", sub:"Manufacturer data sheets for all installed equipment." },
+    { key:"operatingManuals", label:"Appendix 2 — Operating Manuals", sub:"Manufacturer operating manuals for all installed equipment." },
+    { key:"warranty", label:"Appendix 3 — Warranty", sub:"Warranty certificates and terms for covered equipment." },
+    { key:"certificates", label:"Appendix 4 — Certificates", sub:"Compliance, test and commissioning certificates." },
+    { key:"drawings", label:"Appendix 5 — Drawings (As-Built)", sub:"Final as-built mechanical services drawings." }
+  ];
+
+  // Warranty terms on file, keyed by a lowercase match string found in the
+  // equipment schedule's Manufacturer field. Summarised from manufacturer
+  // warranty cards supplied by Joy (Sep 2026).
+  var WARRANTY_LIBRARY = [
+    {
+      match: ["daikin"],
+      brand: "Daikin (VRV)",
+      text: "Daikin VRV — Daikin Australia Pty Ltd (ABN 62 000 172 967). Consumer purchase: 5 years from purchase date, covering parts, repair labour and equipment replacement, at Daikin's discretion. Non-consumer/commercial purchase: 12 months on equipment and 36 months on compressors from purchase date, parts only (labour not covered). Excludes damage from incorrect install, external wiring, misuse, corrosive environments, and consumables (filters, batteries) unless defective on arrival. Claim via Daikin Dealer/Installer, or Daikin Australia, 62-66 Governor Macquarie Drive, Chipping Norton NSW 2170, ph 1300 362 438, daikin.com.au."
+    },
+    {
+      match: ["fantech"],
+      brand: "Fantech",
+      text: "Fantech — Fantech Pty Ltd (ABN 11 005 434 024). 12 months from date of commissioning, or 18 months from date of factory shipment — whichever is sooner. Covers defects in workmanship/materials; defective parts repaired or exchanged F.O.B. factory. Labour costs for removal/installation of parts are NOT covered. Void if goods unpaid, not installed to AS/NZS 3000 wiring rules, or misused/neglected. Claim requires proof of purchase, written defect details and installation/maintenance records. Contact: Fantech Melbourne Head Office, ph (03) 9554 7845, info@fantech.com.au, www.fantech.com.au."
+    },
+    {
+      match: ["fujitsu"],
+      brand: "Fujitsu General",
+      text: "Fujitsu General — Fujitsu General (AUST.) Pty Ltd (ABN 55 001 229 554). Commercial & VRF products: Premium+ 60 month Parts & Labour warranty per the product's registered warranty card (base warranty clause: 36 months from date of commissioning for design/material/workmanship defects — confirm 60-month Premium+ registration was completed for this job). Repaired/replaced at Fujitsu's discretion, normal business hours. Owner bears travel outside normal service area, freight, and access costs for restricted/high locations. Excludes incorrect install, misapplication, non-Fujitsu parts, and weathering/corrosion damage. Contact: Fujitsu General (AUST.) Pty Ltd, VIC/TAS ph (03) 9543 5899, www.fujitsugeneral.com.au."
+    },
+    {
+      match: ["mitsubishi"],
+      brand: "Mitsubishi Electric",
+      text: "Mitsubishi Electric — Mitsubishi Electric Australia Pty Ltd (ABN 58 001 215 792). 60 months / 5 years from date of installation, covering the system (indoor + outdoor units) against manufacturing defects — parts and repair labour, at premises of an Accredited Repairer. Conditions: installed within 12 months of purchase by a licensed installer; product stored clean/dry/pest-free before install; not re-installed at a different location. Excludes consumables, weathering/corrosion damage, incorrect wiring/voltage, and access costs beyond 50km of an Accredited Repairer's base. Contact: Service Line 1300 651 808, 348 Victoria Road, Rydalmere NSW 2116, www.mitsubishielectric.com.au."
+    }
+  ];
+
+  function matchWarranty(manufacturer){
+    if (!manufacturer) return null;
+    var m = manufacturer.toLowerCase();
+    for (var i=0;i<WARRANTY_LIBRARY.length;i++){
+      var entry = WARRANTY_LIBRARY[i];
+      for (var j=0;j<entry.match.length;j++){
+        if (m.indexOf(entry.match[j]) !== -1) return entry;
+      }
+    }
+    return null;
+  }
+
+  function warrantyLibraryPanel(job){
+    var manufacturers = [];
+    (job.equipment||[]).forEach(function(r){
+      var m = (r.manufacturer||'').trim();
+      if (m && manufacturers.indexOf(m) === -1) manufacturers.push(m);
+    });
+    if (!manufacturers.length){
+      return '<div class="info-banner" style="margin-bottom:14px;">' +
+        '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
+        '<div>Add equipment to the schedule above and matching warranty terms (Daikin, Fantech, Fujitsu General, Mitsubishi Electric on file) will appear here to insert.</div>' +
+      '</div>';
+    }
+    var rows = manufacturers.map(function(m){
+      var entry = matchWarranty(m);
+      if (entry){
+        return '<button type="button" class="btn" data-insert-warranty="' + escapeHtml(entry.brand) + '" style="margin:0 6px 6px 0;">' +
+          '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1V12M1 6.5H12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+          'Insert ' + escapeHtml(entry.brand) + ' terms</button>';
+      }
+      return '<span class="chip pending" style="margin:0 6px 6px 0;"><span class="chip-dot"></span>' + escapeHtml(m) + ' — no warranty on file</span>';
+    }).join('');
+    return '<div class="divider-label">Warranty terms on file</div>' +
+      '<div style="margin-bottom:10px;">' + rows + '</div>';
+  }
+
+  // Technical data sheets for AC units Victorian Projects commonly installs.
+  // Matched against the equipment schedule by model number (and manufacturer).
+  // Empty until Joy sends through the usual spec sheets — add entries here as
+  // { manufacturer:"Daikin", model:"CDXP35RVMA", text:"..." } and republish.
+  var TECH_DATA_LIBRARY = [
+  ];
+
+  function matchTechData(manufacturer, model){
+    if (!model) return null;
+    var mo = model.toLowerCase().trim();
+    var mf = (manufacturer||'').toLowerCase().trim();
+    for (var i=0;i<TECH_DATA_LIBRARY.length;i++){
+      var entry = TECH_DATA_LIBRARY[i];
+      var entryModel = (entry.model||'').toLowerCase();
+      var entryMf = (entry.manufacturer||'').toLowerCase();
+      if (entryModel && (mo.indexOf(entryModel) !== -1 || entryModel.indexOf(mo) !== -1)){
+        if (!entryMf || !mf || mf.indexOf(entryMf) !== -1) return entry;
+      }
+    }
+    return null;
+  }
+
+  function technicalDataLibraryPanel(job){
+    var rows = (job.equipment||[]).filter(function(r){ return (r.model||'').trim(); });
+    if (!rows.length){
+      return '<div class="info-banner" style="margin-bottom:14px;">' +
+        '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
+        '<div>Add model numbers to the equipment schedule above and matching spec sheets on file will appear here to insert.</div>' +
+      '</div>';
+    }
+    var hasLibrary = TECH_DATA_LIBRARY.length > 0;
+    var chips = rows.map(function(r){
+      var entry = matchTechData(r.manufacturer, r.model);
+      if (entry){
+        return '<button type="button" class="btn" data-insert-techdata="' + escapeHtml(r.id) + '" style="margin:0 6px 6px 0;">' +
+          '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1V12M1 6.5H12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+          'Insert ' + escapeHtml(r.model) + ' spec</button>';
+      }
+      return '<span class="chip pending" style="margin:0 6px 6px 0;"><span class="chip-dot"></span>' + escapeHtml(r.model) + ' — no spec on file</span>';
+    }).join('');
+    var note = hasLibrary ? '' :
+      '<div class="field-note" style="margin-bottom:8px;">No spec sheets loaded yet — send Joy\'s usual AC unit data sheets to Claude in chat and they\'ll be added here for automatic matching.</div>';
+    return '<div class="divider-label">Technical data on file</div>' + note +
+      '<div style="margin-bottom:10px;">' + chips + '</div>';
+  }
+
+  /* -------- file attachments (actual documents, stored in full — all appendix sections) -------- */
+  var MAX_FILE_BYTES = 8 * 1024 * 1024; // ~8MB raw file per attachment (chunked under the hood)
+  var FILE_CHUNK_CHARS = 150000; // base64 chars per chunk — keeps each chunk doc safely under the 256KB db document cap
+  function formatBytes(n){
+    if (n < 1024) return n + ' B';
+    if (n < 1024*1024) return (n/1024).toFixed(0) + ' KB';
+    return (n/(1024*1024)).toFixed(1) + ' MB';
+  }
+  function filesCollection(jobId){ return db.collection('jobs/' + jobId + '/files'); }
+
+  /* Write a (possibly large) base64 payload as one metadata doc plus, if needed,
+     a chunks subcollection — sequential awaits so we never blow the concurrent-write budget. */
+  async function writeFileChunked(jobId, meta, base64){
+    var ref = filesCollection(jobId).doc();
+    if (base64.length <= FILE_CHUNK_CHARS){
+      await ref.set(Object.assign({}, meta, { data: base64, chunkCount: 0 }));
+      return ref.id;
+    }
+    var chunkCount = Math.ceil(base64.length / FILE_CHUNK_CHARS);
+    await ref.set(Object.assign({}, meta, { chunkCount: chunkCount }));
+    for (var i = 0; i < chunkCount; i++){
+      var part = base64.slice(i * FILE_CHUNK_CHARS, (i + 1) * FILE_CHUNK_CHARS);
+      await ref.collection('chunks').doc(String(i)).set({ data: part });
+    }
+    return ref.id;
+  }
+
+  /* Reassemble a file's full base64 payload, fetching chunks in order if it was split. */
+  async function readFileChunked(jobId, fileId, metaData){
+    if (!metaData.chunkCount){ return metaData.data || ''; }
+    var ref = filesCollection(jobId).doc(fileId);
+    var parts = new Array(metaData.chunkCount);
+    for (var i = 0; i < metaData.chunkCount; i++){
+      var snap = await ref.collection('chunks').doc(String(i)).get();
+      parts[i] = (snap.exists && snap.data().data) || '';
+    }
+    return parts.join('');
+  }
+
+  async function deleteFileChunked(jobId, fileId, chunkCount){
+    var ref = filesCollection(jobId).doc(fileId);
+    if (chunkCount){
+      for (var i = 0; i < chunkCount; i++){
+        await ref.collection('chunks').doc(String(i)).delete();
+      }
+    }
+    await ref.delete();
+  }
+
+  function uploadUnavailablePanel(){
+    return '<div class="info-banner" style="margin-bottom:14px;">' +
+      '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
+      '<div>File upload needs the shared sync connection, which isn\'t available right now — use the notes field below to record where this file lives instead.</div>' +
+    '</div>';
+  }
+
+  function filesPanel(jobId, sectionKey){
+    var files = ((state.filesByJob[jobId] || {})[sectionKey]) || [];
+    var list = files.length
+      ? files.map(function(f){
+          return '' +
+            '<div class="file-row" data-file-id="' + f.id + '">' +
+              '<span class="file-name">' + escapeHtml(f.filename) + '</span>' +
+              '<span class="file-size mono">' + formatBytes(f.size||0) + '</span>' +
+              '<button type="button" class="file-btn" data-file-download="' + f.id + '" title="Download">' +
+                '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1V8.5M6.5 8.5L3.8 5.8M6.5 8.5L9.2 5.8M2 10.5V11C2 11.55 2.45 12 3 12H10C10.55 12 11 11.55 11 11V10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+              '</button>' +
+              '<button type="button" class="file-btn file-btn-del" data-file-remove="' + f.id + '" title="Remove">' +
+                '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 4H12M5.5 4V2.5C5.5 2 5.9 1.6 6.4 1.6H7.6C8.1 1.6 8.5 2 8.5 2.5V4M10.5 4L10 11.5C9.96 12.1 9.46 12.6 8.86 12.6H5.14C4.54 12.6 4.04 12.1 4 11.5L3.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+              '</button>' +
+            '</div>';
+        }).join('')
+      : '<div class="field-note">No files uploaded yet.</div>';
+    return '' +
+      '<div class="divider-label">Uploaded files</div>' +
+      '<div class="file-list" id="fileList_' + sectionKey + '">' + list + '</div>' +
+      '<label class="eq-add-row" style="margin-top:10px;">' +
+        '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1V12M1 6.5H12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+        'Upload file' +
+        '<input type="file" data-file-upload="' + sectionKey + '" style="display:none;" />' +
+      '</label>' +
+      '<div class="field-note" style="margin-top:6px;">Uploaded here, the actual file (up to ~8MB) is stored in the manual — PDFs and images are merged in as real pages when you export, not just a link. Use "Linked files" below instead only if the source keeps changing and you want it to stay pointed at the live copy.</div>';
+  }
+
+  function linkRowsHtml(links){
+    if (!links || !links.length) return '<div class="field-note">No linked files yet.</div>';
+    return links.map(function(l){
+      return '' +
+        '<div class="file-row" data-link-id="' + l.id + '">' +
+          '<a class="file-name" href="' + escapeHtml(l.url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none;">' + escapeHtml(l.label || l.url) + '</a>' +
+          '<button type="button" class="file-btn file-btn-del" data-link-remove="' + l.id + '" title="Remove link">' +
+            '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 4H12M5.5 4V2.5C5.5 2 5.9 1.6 6.4 1.6H7.6C8.1 1.6 8.5 2 8.5 2.5V4M10.5 4L10 11.5C9.96 12.1 9.46 12.6 8.86 12.6H5.14C4.54 12.6 4.04 12.1 4 11.5L3.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  function linksPanel(job, sectionKey){
+    var links = (job.sections[sectionKey] && job.sections[sectionKey].links) || [];
+    return '' +
+      '<div class="divider-label">Linked files (no size limit)</div>' +
+      '<div class="file-list" id="linkList_' + sectionKey + '">' + linkRowsHtml(links) + '</div>' +
+      '<div class="link-add-row">' +
+        '<input type="text" class="link-add-label" data-link-label="' + sectionKey + '" placeholder="Label, e.g. AC-1.1 Daikin data sheet" />' +
+        '<input type="text" class="link-add-url" data-link-url="' + sectionKey + '" placeholder="https://vicrefrig.sharepoint.com/..." />' +
+        '<button type="button" class="btn" data-add-link="' + sectionKey + '">Add link</button>' +
+      '</div>' +
+      '<div class="field-note" style="margin:6px 0 2px;">Paste a link to the file on SharePoint (Shared Documents/Claude Code/Joy) or wherever it lives — or send the file to Claude in chat and it\'ll be uploaded there and linked here for you.</div>';
+  }
+
+  var STATUS_META = {
+    pending:  { label:"Not started",       chip:"pending"  },
+    awaiting: { label:"Awaiting documents", chip:"awaiting" },
+    complete: { label:"Complete",          chip:"complete" }
+  };
+
+  function uid(){ return 'r' + Math.random().toString(36).slice(2,10); }
+  function nowIso(){ return new Date().toISOString(); }
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // Short "2 days ago" / "just now" label for a job list row, so a finished manual
+  // reads as something already done rather than something to redo.
+  function timeAgo(iso){
+    if (!iso) return '';
+    var then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    var diff = Math.max(0, Date.now() - then);
+    var mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    var days = Math.floor(hrs / 24);
+    if (days < 30) return days + 'd ago';
+    var months = Math.floor(days / 30);
+    if (months < 12) return months + 'mo ago';
+    return Math.floor(months / 12) + 'y ago';
+  }
+
+  // Finds another job (not `excludeId`) whose trimmed, case-insensitive name matches `name`.
+  // Used to warn before a second job manual gets created for a job that already has one.
+  function findJobByName(name, excludeId){
+    var norm = String(name || '').trim().toLowerCase();
+    if (!norm) return null;
+    for (var i = 0; i < state.order.length; i++){
+      var id = state.order[i];
+      if (id === excludeId) continue;
+      var j = state.jobs[id];
+      if (j && String(j.name || '').trim().toLowerCase() === norm) return id;
+    }
+    return null;
+  }
+
+  /* Strip invisible/zero-width unicode characters (zero-width space/non-joiner/joiner, BOM,
+     bidi control marks) that sometimes ride along in pasted text — jsPDF's built-in fonts
+     can't map them and end up mis-measuring the whole string, producing spaced-out, "broken
+     font" looking text. Applied to every value before it reaches the PDF or the preview. */
+  function cleanText(s){
+    return String(s==null?'':s).replace(/[​-‏‪-‮⁠﻿]/g, '');
+  }
+  function sanitizeDeep(value){
+    if (typeof value === 'string') return cleanText(value);
+    if (Array.isArray(value)) return value.map(sanitizeDeep);
+    if (value && typeof value === 'object'){
+      var out = {};
+      Object.keys(value).forEach(function(k){ out[k] = sanitizeDeep(value[k]); });
+      return out;
+    }
+    return value;
+  }
+
+  function blankJob(name){
+    return {
+      name: name || "",
+      docNo: "VP-OAM",
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      builder: { name:"", address:"", phone:"", fax:"", email:"" },
+      projectJobNumber: "",
+      equipment: [],
+      wsdNotes: "",
+      sections: {
+        technicalData:   { status:"pending", notes:"", links:[] },
+        operatingManuals:{ status:"pending", notes:"", links:[] },
+        warranty:        { status:"pending", notes:"", links:[] },
+        certificates:    { status:"pending", notes:"", links:[] },
+        drawings:        { status:"pending", notes:"", links:[] }
+      }
+    };
+  }
+
+  function jobProgress(job){
+    var total = 7, done = 0;
+    if (job.builder && job.builder.name && job.builder.name.trim()) done++;
+    if (job.equipment && job.equipment.length) done++;
+    APPENDICES.forEach(function(a){
+      if (job.sections && job.sections[a.key] && job.sections[a.key].status === "complete") done++;
+    });
+    return { done: done, total: total, pct: Math.round((done/total)*100) };
+  }
+
+  /* ---------------- state ---------------- */
+  var state = {
+    jobs: {},       // id -> job data
+    order: [],      // ids in list order
+    activeId: null,
+    openSections: { contact:true, equipment:true, technicalData:false, operatingManuals:false, warranty:false, certificates:false, drawings:false },
+    filesByJob: {},  // jobId -> { certificates: [...], drawings: [...] }
+    wsdScan: null    // { sourceName, status: 'scanning'|'done'|'error', candidates: [...], error }
+  };
+
+  // Firebase project config for VP OAM Manual (Firestore, free Spark plan).
+  // Safe to keep in client-side code — this is a public app identifier, not a secret.
+  // What actually protects the data is the Firestore security rules set in the Firebase console.
+  var firebaseConfig = {
+    apiKey: "AIzaSyDNXJiUGj_ZO223yMWIXfRL4954iooLS-4",
+    authDomain: "vp-oam-manual.firebaseapp.com",
+    projectId: "vp-oam-manual",
+    storageBucket: "vp-oam-manual.firebasestorage.app",
+    messagingSenderId: "817382945972",
+    appId: "1:817382945972:web:b805393e2aad16729993e1"
+  };
+
+  var db = null;
+  var sampleCap = null; // Claude's "ask Claude" image-scan capability — only exists inside a Claude
+                         // Artifact, not on a plain page like this one, so this always stays null here.
+  var unsubJobs = null;
+  var syncConfirmed = false; // true once the db subscription has delivered at least one snapshot
+  var unsubActive = null;
+  var saveTimers = {};
+  var pendingChanges = {}; // jobId -> {dotted.path: value} queued for the next targeted save
+
+  /* ---------------- file download (plain browser, no Claude "downloads" capability here) ---------------- */
+  function browserDownloadBlob(filename, blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'download';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 2200);
+  }
+
+  /* ---------------- sync footer ---------------- */
+  function setSyncStatus(mode){
+    var el = document.getElementById('syncFoot');
+    if (mode === 'live'){
+      el.innerHTML = '<span class="sync-dot live"></span>Synced — shared with your team';
+    } else if (mode === 'stuck'){
+      // Connection never came up at all — this is the state that used to leave the
+      // sidebar sitting on the empty placeholder forever with no explanation. Say so
+      // plainly and give a one-click way to try again without a full page reload.
+      el.innerHTML = '<span class="sync-dot"></span>Can\'t reach sync — showing your last saved copy here <button type="button" id="retrySyncBtn" style="margin-left:6px;font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--line);background:#fff;cursor:pointer;">Retry</button>';
+      var btn = document.getElementById('retrySyncBtn');
+      if (btn) btn.addEventListener('click', function(){
+        setSyncStatus('connecting');
+        attachJobsListener();
+      });
+    } else if (mode === 'local'){
+      el.innerHTML = '<span class="sync-dot"></span>Local only (not connected)';
+    } else {
+      el.innerHTML = '<span class="sync-dot"></span>Connecting…';
+    }
+  }
+
+  /* ---------------- rendering: job list ---------------- */
+  // Renders one job row. `showBar` controls whether the progress ring/pct is shown —
+  // omitted for the Completed group since "100%" reads as redundant once it has its
+  // own labeled section.
+  function jobItemHtml(id, showBar){
+    var job = state.jobs[id];
+    if (!job) return '';
+    var prog = jobProgress(job);
+    var active = id === state.activeId;
+    var ago = timeAgo(job.updatedAt);
+    return '' +
+      '<div class="job-item' + (active?' active':'') + '" data-id="' + id + '">' +
+        '<div class="job-item-top">' +
+          '<div class="job-item-name">' + (escapeHtml(job.name) || 'Untitled job') + '</div>' +
+        '</div>' +
+        (showBar ? (
+          '<div class="job-item-meta">' +
+            '<div class="job-item-bar"><div class="job-item-bar-fill" style="width:' + prog.pct + '%"></div></div>' +
+            '<div class="job-item-pct">' + prog.pct + '%</div>' +
+          '</div>'
+        ) : '') +
+        (ago ? '<div class="job-item-ago">Updated ' + ago + '</div>' : '') +
+      '</div>';
+  }
+
+  // A record of every manual that's been finished, and every one still in progress —
+  // split into two clearly labeled groups (rather than one flat list with a small badge)
+  // so it's obvious at a glance whether a job already has a completed manual before
+  // starting a new one for it.
+  function renderJobList(){
+    var listEl = document.getElementById('jobList');
+    if (!state.order.length){
+      listEl.innerHTML = '<div class="job-list-label">Jobs (0)</div><div class="job-empty">No jobs yet. Click "New job manual" to start one.</div>';
+      return;
+    }
+    // Sort most-recently-updated first within each group so a manual worked on
+    // today sits above older ones.
+    var sortedIds = state.order.slice().sort(function(a, b){
+      var ja = state.jobs[a], jb = state.jobs[b];
+      var ta = ja && ja.updatedAt ? new Date(ja.updatedAt).getTime() : 0;
+      var tb = jb && jb.updatedAt ? new Date(jb.updatedAt).getTime() : 0;
+      return tb - ta;
+    });
+    var completedIds = [], inProgressIds = [];
+    sortedIds.forEach(function(id){
+      var job = state.jobs[id];
+      if (!job) return;
+      if (jobProgress(job).pct >= 100) completedIds.push(id); else inProgressIds.push(id);
+    });
+
+    var html = '';
+    html += '<div class="job-list-label job-list-label-done">Completed manuals (' + completedIds.length + ')</div>';
+    html += completedIds.length
+      ? completedIds.map(function(id){ return jobItemHtml(id, false); }).join('')
+      : '<div class="job-empty job-empty-sm">None finished yet.</div>';
+    html += '<div class="job-list-label">In progress (' + inProgressIds.length + ')</div>';
+    html += inProgressIds.length
+      ? inProgressIds.map(function(id){ return jobItemHtml(id, true); }).join('')
+      : '<div class="job-empty job-empty-sm">Nothing in progress.</div>';
+
+    listEl.innerHTML = html;
+    listEl.querySelectorAll('.job-item').forEach(function(el){
+      el.addEventListener('click', function(){ selectJob(el.getAttribute('data-id')); });
+    });
+  }
+
+  /* ---------------- rendering: job detail ---------------- */
+  function statusButtons(sectionKey, current){
+    var order = ["pending","awaiting","complete"];
+    return order.map(function(s){
+      var sel = s === current ? ' sel-' + s : '';
+      return '<button type="button" class="status-btn' + sel + '" data-section="' + sectionKey + '" data-status="' + s + '">' + STATUS_META[s].label + '</button>';
+    }).join('');
+  }
+
+  // Manufacturers we recognise inside a WSD's text-based equipment schedule table.
+  // Matching is case-insensitive and only used to find candidate rows for review —
+  // nothing is added to the schedule without the user confirming it.
+  var KNOWN_MANUFACTURERS = [
+    'Daikin', 'Fantech', 'Mitsubishi Electric', 'Mitsubishi Heavy Industries', 'Mitsubishi',
+    'Fujitsu General', 'Fujitsu', 'Panasonic', 'LG', 'Samsung', 'Toshiba', 'Actron', 'Braemar',
+    'Rinnai', 'Temperzone', 'York', 'Carrier', 'Trane', 'Systemair', 'Bonaire', 'Airtouch'
+  ];
+
+  /* Load a PDF into a pdf.js document proxy. Kept separate from extractPdfLines so the
+     same open doc can be reused afterwards to render a page as an image (for the
+     Claude image-scan fallback below) without re-reading the file. */
+  async function loadPdfDoc(arrayBuffer){
+    if (!window.pdfjsLib) throw new Error('PDF reading is unavailable right now');
+    return await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  }
+
+  /* Extract text from every page of a PDF, grouped into lines (by y-position) with each
+     line's items kept in reading order and tagged with their x-position — good enough to
+     reconstruct simple table rows without needing a real table-parsing library. */
+  async function extractPdfLines(doc){
+    var lines = [];
+    for (var p = 1; p <= doc.numPages; p++){
+      var page = await doc.getPage(p);
+      var content = await page.getTextContent();
+      var byY = {};
+      content.items.forEach(function(item){
+        if (!item.str || !item.str.trim()) return;
+        var y = Math.round(item.transform[5] / 2) * 2; // 2pt tolerance bucket
+        var x = item.transform[4];
+        if (!byY[y]) byY[y] = [];
+        byY[y].push({ str: item.str, x: x });
+      });
+      Object.keys(byY).forEach(function(y){
+        var items = byY[y].sort(function(a,b){ return a.x - b.x; });
+        lines.push({ page: p, items: items, text: items.map(function(i){ return i.str; }).join(' ') });
+      });
+    }
+    return lines;
+  }
+
+  /* Some WSDs' equipment schedule page is a scanned/embedded picture of the table rather
+     than real text — the surrounding title block and general notes are still ordinary
+     text, so that page still shows up here, just with far fewer words than a page whose
+     schedule really is typed text. Flag any page whose (sparse) text mentions "schedule"
+     as a candidate for the Claude image-read fallback. */
+  function findImageScheduleCandidatePages(lines){
+    var byPage = {};
+    lines.forEach(function(l){ (byPage[l.page] = byPage[l.page] || []).push(l.text); });
+    var pages = [];
+    Object.keys(byPage).forEach(function(p){
+      var text = byPage[p].join(' ');
+      var wordCount = text.split(/\s+/).filter(Boolean).length;
+      if (/schedule/i.test(text) && wordCount < 150) pages.push(Number(p));
+    });
+    return pages;
+  }
+
+  /* Render one PDF page to a PNG blob, for handing to Claude via the "sample" capability
+     when the page's schedule table turned out to be a picture rather than text. */
+  async function renderPdfPageToBlob(doc, pageNum, scale){
+    var page = await doc.getPage(pageNum);
+    var viewport = page.getViewport({ scale: scale || 2.2 });
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    var ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+    return await new Promise(function(resolve){ canvas.toBlob(resolve, 'image/png'); });
+  }
+
+  var WSD_IMAGE_SCAN_PROMPT = '' +
+    'This image is one page from a mechanical services work order/drawing set (a WSD). ' +
+    'It shows an equipment schedule table — this may include an AC Unit Schedule, a Fan Schedule, and/or a Grille Schedule. ' +
+    'Read every equipment item in the schedule and reply with ONLY a JSON array (no other text), one object per item, shaped like:\n' +
+    '{"ref":"AC-01","type":"AC","manufacturer":"Daikin","model":"FCA100CVMA"}\n' +
+    'Rules:\n' +
+    '- "type" must be exactly "AC" for air conditioning units, "Fan" for exhaust/supply/inline/roof-mounted fans, or "Other" for anything else (e.g. a grille).\n' +
+    '- When an AC unit is listed with a separate indoor and outdoor unit, use the INDOOR unit\'s reference (e.g. "AC-01", not "CU-01") for "ref", and the INDOOR unit\'s model number for "model".\n' +
+    '- Include every fan row shown (e.g. EF-, SF-, RC- references), each with its own model number.\n' +
+    '- Skip grille-only rows unless a distinct manufacturer and model number is shown for that row.\n' +
+    '- If a field is not shown on the schedule, use an empty string for it — never invent a value.\n' +
+    'Reply with the JSON array only.';
+
+  /* Friendly copy for a failed sample() image-scan call — branch on e.code, never e.message. */
+  function imageScanErrorMessage(err){
+    var code = err && err.code;
+    if (code === 'not_granted') return 'You declined letting Claude read this file.';
+    if (code === 'images_unavailable' || code === 'sampling_disabled' || code === 'not_declared' || code === 'capability_disabled' || code === 'capability_removed') return 'Claude reading isn\'t available in this view right now.';
+    if (code === 'rate_limited') return 'Too many requests right now — try again shortly.';
+    if (code === 'image_rejected') return 'Could not read that page image — try a different page.';
+    if (code === 'invalid_json') return 'Claude\'s answer wasn\'t in the expected format — try again.';
+    if (code === 'refused') return 'Claude declined to read that page.';
+    return 'Could not read the schedule' + (err && err.message ? (' — ' + err.message) : '') + '.';
+  }
+
+  /* Best-effort parse: for any line mentioning a known manufacturer, split the line's
+     items into "before / manufacturer / after" using x-position gaps as column breaks,
+     and offer that as a candidate Reference / Manufacturer / Model row. */
+  function parseEquipmentCandidates(lines){
+    var candidates = [];
+    lines.forEach(function(line){
+      var lower = line.text.toLowerCase();
+      var brand = KNOWN_MANUFACTURERS.find(function(m){ return lower.indexOf(m.toLowerCase()) !== -1; });
+      if (!brand) return;
+      var items = line.items;
+      var brandIdx = items.findIndex(function(i){ return i.str.toLowerCase().indexOf(brand.toLowerCase()) !== -1; });
+      if (brandIdx === -1) return;
+      var before = items.slice(0, brandIdx).map(function(i){ return i.str; }).join(' ').trim();
+      var after = items.slice(brandIdx + 1).map(function(i){ return i.str; }).join(' ').trim();
+      // The "Reference" is usually the shortest leading token (e.g. AC-1.1, FAN-03);
+      // the "Model" is usually the first alphanumeric-looking token after the brand.
+      var refGuess = (before.match(/[A-Za-z]{1,6}[-.]?\d+[A-Za-z0-9.\-]*/) || [before])[0];
+      var modelGuess = (after.match(/[A-Za-z0-9][A-Za-z0-9\-\/]{2,}/) || [after])[0] || '';
+      candidates.push({
+        id: uid(),
+        ref: (refGuess || '').trim(),
+        manufacturer: brand,
+        model: (modelGuess || '').trim(),
+        page: line.page,
+        include: true
+      });
+    });
+    // de-duplicate identical ref+manufacturer+model guesses (common with repeated schedule rows)
+    var seen = {};
+    return candidates.filter(function(c){
+      var key = (c.ref+'|'+c.manufacturer+'|'+c.model).toLowerCase();
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
+  function wsdScanCandidatesHtml(){
+    var scan = state.wsdScan;
+    if (!scan) return '';
+    if (scan.status === 'scanning'){
+      return '<div class="field-note" style="margin-top:10px;">Scanning ' + escapeHtml(scan.sourceName) + '…</div>';
+    }
+    if (scan.status === 'error'){
+      return '<div class="field-note" style="margin-top:10px;color:var(--danger,#b3261e);">Could not scan ' + escapeHtml(scan.sourceName) + ' — ' + escapeHtml(scan.error||'unknown error') + '</div>';
+    }
+    var rows = scan.candidates || [];
+    var imagePages = scan.imageFallbackPages || [];
+    var imageBanner = '';
+    if (!rows.length && imagePages.length){
+      var pageWord = imagePages.length > 1 ? 'Pages' : 'Page';
+      if (sampleCap){
+        imageBanner = '<div class="info-banner" style="margin:10px 0;">' +
+          '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
+          '<div>No typed text found for the schedule — ' + pageWord + ' ' + imagePages.join(', ') + ' looks like a scanned or embedded picture of the table. Claude can read it directly instead:' +
+          '<div style="margin-top:8px;">' +
+            imagePages.map(function(p){
+              var busy = scan.imageScanning === p;
+              return '<button type="button" class="btn" style="margin:0 6px 6px 0;" data-wsd-image-scan="' + p + '"' + (busy ? ' disabled' : '') + '>' +
+                (busy ? 'Reading page ' + p + ' with Claude…' : 'Read page ' + p + ' with Claude') +
+              '</button>';
+            }).join('') +
+          '</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        imageBanner = '<div class="field-note" style="margin:10px 0;">' + pageWord + ' ' + imagePages.join(', ') + ' look' + (imagePages.length>1?'':'s') + ' like a scanned or embedded picture of the table — reading images isn\'t available in this view. Send the WSD PDF to Claude in chat instead and it can read the schedule and add the rows for you directly.</div>';
+      }
+    }
+    var rowsHtml = rows.length
+      ? rows.map(function(c){
+          return '' +
+            '<tr data-cand="' + c.id + '">' +
+              '<td style="width:28px;"><input type="checkbox" data-cand-include="' + c.id + '"' + (c.include ? ' checked' : '') + ' /></td>' +
+              '<td><input class="eq-field" data-cand-field="ref" value="' + escapeHtml(c.ref) + '" placeholder="AC-1.1" /></td>' +
+              '<td><input class="eq-field" data-cand-field="manufacturer" value="' + escapeHtml(c.manufacturer) + '" placeholder="Daikin" /></td>' +
+              '<td><input class="eq-field" data-cand-field="model" value="' + escapeHtml(c.model) + '" placeholder="CDXP35RVMA" /></td>' +
+              '<td style="color:var(--ink-faint);font-size:11.5px;">p.' + c.page + '</td>' +
+            '</tr>';
+        }).join('')
+      : '<tr><td colspan="5" style="color:var(--ink-faint);font-size:12.5px;padding:12px 8px;">No equipment schedule rows recognised in that PDF' + (imagePages.length ? '.' : ' — add them manually below, or try a different file.') + '</td></tr>';
+    return '' +
+      '<div class="divider-label" style="margin-top:14px;">Scanned from ' + escapeHtml(scan.sourceName) + ' — review before adding</div>' +
+      imageBanner +
+      '<div style="overflow-x:auto;">' +
+        '<table class="eq-table">' +
+          '<thead><tr><th></th><th>Reference</th><th>Manufacturer</th><th>Model No.</th><th></th></tr></thead>' +
+          '<tbody id="wsdCandTbody">' + rowsHtml + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      (rows.length ? '<button type="button" class="eq-add-row" id="wsdCandAdd" style="margin-top:8px;">Add checked rows to schedule</button> ' : '') +
+      '<button type="button" class="eq-add-row" id="wsdCandDiscard" style="margin-top:8px;">Discard scan</button>';
+  }
+
+  function equipmentRowsHtml(equipment){
+    if (!equipment.length){
+      return '<tr><td colspan="5" style="color:var(--ink-faint);font-size:12.5px;padding:12px 8px;">No equipment added yet.</td></tr>';
+    }
+    return equipment.map(function(row){
+      return '' +
+        '<tr data-row="' + row.id + '">' +
+          '<td><input class="eq-field" data-field="ref" value="' + escapeHtml(row.ref) + '" placeholder="AC-1.1" /></td>' +
+          '<td>' +
+            '<select class="eq-field" data-field="type">' +
+              '<option value="AC"' + (row.type==='AC'?' selected':'') + '>AC unit</option>' +
+              '<option value="Fan"' + (row.type==='Fan'?' selected':'') + '>Fan</option>' +
+              '<option value="Other"' + (row.type==='Other'?' selected':'') + '>Other</option>' +
+            '</select>' +
+          '</td>' +
+          '<td><input class="eq-field" data-field="manufacturer" value="' + escapeHtml(row.manufacturer) + '" placeholder="Daikin" /></td>' +
+          '<td><input class="eq-field" data-field="model" value="' + escapeHtml(row.model) + '" placeholder="CDXP35RVMA" /></td>' +
+          '<td style="width:32px;"><button type="button" class="eq-row-del" data-del="' + row.id + '" title="Remove row">' +
+            '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4H12M5.5 4V2.5C5.5 2 5.9 1.6 6.4 1.6H7.6C8.1 1.6 8.5 2 8.5 2.5V4M10.5 4L10 11.5C9.96 12.1 9.46 12.6 8.86 12.6H5.14C4.54 12.6 4.04 12.1 4 11.5L3.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '</button></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function progressRingSvg(pct){
+    var r = 22, c = 2*Math.PI*r;
+    var off = c - (pct/100)*c;
+    var color = pct === 100 ? 'var(--success)' : 'var(--accent)';
+    return '' +
+      '<svg width="56" height="56" viewBox="0 0 56 56">' +
+        '<circle cx="28" cy="28" r="' + r + '" fill="none" stroke="var(--pending-soft)" stroke-width="5"/>' +
+        '<circle cx="28" cy="28" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="5" stroke-linecap="round" ' +
+          'stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '" transform="rotate(-90 28 28)"/>' +
+        '<text x="28" y="32" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono, monospace">' + pct + '%</text>' +
+      '</svg>';
+  }
+
+  function renderJobDetail(){
+    var topbar = document.getElementById('topbar');
+    var inner = document.getElementById('contentInner');
+    var job = state.jobs[state.activeId];
+
+    if (!job){
+      topbar.style.display = 'none';
+      inner.innerHTML = document.getElementById('emptyState').outerHTML;
+      return;
+    }
+
+    topbar.style.display = 'flex';
+    document.getElementById('jobNameInput').value = job.name || '';
+    document.getElementById('docNoLabel').textContent = job.docNo || 'VP-OAM';
+
+    var prog = jobProgress(job);
+    var chips = [];
+    chips.push('<span class="chip ' + (job.builder.name ? 'complete' : 'pending') + '"><span class="chip-dot"></span>Builder details</span>');
+    chips.push('<span class="chip ' + (job.equipment.length ? 'complete' : 'pending') + '"><span class="chip-dot"></span>Equipment schedule</span>');
+    APPENDICES.forEach(function(a){
+      var st = job.sections[a.key].status;
+      chips.push('<span class="chip ' + STATUS_META[st].chip + '"><span class="chip-dot"></span>' + a.label.split('—')[0].trim() + '</span>');
+    });
+
+    var html = '';
+
+    var dupId = findJobByName(job.name, state.activeId);
+    if (dupId){
+      var dupJob = state.jobs[dupId];
+      html += '' +
+        '<div class="dup-warning">' +
+          '<div>' +
+            '<b>You already have a job manual named "' + escapeHtml(dupJob.name) + '"</b>' +
+            'This looks like a duplicate. Anything you add here won\'t show up in the other one.' +
+            '<div class="dup-warning-actions">' +
+              '<button type="button" data-open-dup="' + dupId + '">Open the other one instead</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    html += '' +
+      '<div class="progress-card">' +
+        '<div class="progress-ring">' + progressRingSvg(prog.pct) + '</div>' +
+        '<div class="progress-copy">' +
+          '<div class="progress-copy-title">' + prog.done + ' of ' + prog.total + ' sections complete</div>' +
+          '<div class="progress-copy-sub">Contact details, equipment schedule and the five appendices.</div>' +
+          '<div class="progress-chips">' + chips.join('') + '</div>' +
+        '</div>' +
+      '</div>';
+
+    html += '' +
+      '<div class="info-banner">' +
+        '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
+        '<div><b>Source documents:</b> Certificates and Drawings support direct upload for small files (under ~150KB). Warranty and Technical Data auto-insert from what\'s on file once you\'ve added the equipment schedule below. For the WSD schedule, larger drawing sets, or anything else, paste the file name or shared drive/Simpro link in the notes field. Everything entered here is compiled when you export.</div>' +
+      '</div>';
+
+    // Contact information section
+    var b = job.builder;
+    html += sectionShell('contact', '1', 'Contact Information', 'Job name, builder details and contractor details (Table 1).', '' +
+      '<div class="divider-label">Builder</div>' +
+      '<div class="field-grid">' +
+        field('Name','builder.name', b.name, 'text', 'e.g. Acme Constructions Pty Ltd') +
+        field('Project &amp; job number','projectJobNumber', job.projectJobNumber, 'text', 'e.g. 24-118') +
+        field('Address','builder.address', b.address, 'textarea', 'Site or head office address') +
+        field('Phone','builder.phone', b.phone, 'text', '(0X) XXXX XXXX') +
+        field('Fax','builder.fax', b.fax, 'text', '-') +
+        field('Email','builder.email', b.email, 'text', 'name@company.com.au') +
+      '</div>' +
+      '<div class="divider-label">Contractor (fixed)</div>' +
+      '<div class="field-grid">' +
+        readonlyField('Name', CONTRACTOR.name) +
+        readonlyField('Phone', CONTRACTOR.phone) +
+        readonlyField('Address', CONTRACTOR.address.replace(/\n/g,', ')) +
+        readonlyField('Email', CONTRACTOR.email) +
+      '</div>'
+    );
+
+    // Equipment schedule
+    html += sectionShell('equipment', '2', 'Equipment Schedule — AC Units &amp; Fans', job.equipment.length + ' item' + (job.equipment.length===1?'':'s') + ' logged for the defects liability schedule.', '' +
+      '<div style="overflow-x:auto;">' +
+        '<table class="eq-table">' +
+          '<thead><tr><th style="width:16%">Reference</th><th style="width:16%">Type</th><th style="width:28%">Manufacturer</th><th style="width:32%">Model No.</th><th></th></tr></thead>' +
+          '<tbody id="eqTbody">' + equipmentRowsHtml(job.equipment) + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<button type="button" class="eq-add-row" id="eqAddRow">' +
+        '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1V12M1 6.5H12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+        'Add row' +
+      '</button> ' +
+      (window.pdfjsLib ? (
+        '<label class="eq-add-row" style="margin-left:8px;">' +
+          '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1.5H8L11 4.5V11.5C11 11.9 10.7 12.2 10.3 12.2H2.7C2.3 12.2 2 11.9 2 11.5V2.2C2 1.8 2.3 1.5 2.7 1.5Z" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 6.5H8.5M4.5 9H8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' +
+          'Scan WSD for equipment' +
+          '<input type="file" accept="application/pdf" data-wsd-scan style="display:none;" />' +
+        '</label>'
+      ) : '') +
+      '<div class="field-note" style="margin-top:8px;">Scans a WSD PDF\'s text-based equipment schedule table and suggests rows to add — always shown for review before anything is added, since table layouts vary job to job.</div>' +
+      wsdScanCandidatesHtml() +
+      '<div class="divider-label">WSD reference</div>' +
+      '<div class="field-grid span-1">' +
+        field('Notes / WSD file or link', 'wsdNotes', job.wsdNotes, 'textarea', 'e.g. WSD schedule received 3/9 — see shared drive /Jobs/24-118/WSD-schedule.pdf') +
+      '</div>'
+    );
+
+    // Appendix sections
+    APPENDICES.forEach(function(a, idx){
+      var s = job.sections[a.key];
+      var extra = '';
+      if (a.key === 'warranty') extra = warrantyLibraryPanel(job);
+      else if (a.key === 'technicalData') extra = technicalDataLibraryPanel(job);
+      var uploadExtra = db ? filesPanel(state.activeId, a.key) : uploadUnavailablePanel();
+      var linksExtra = db ? linksPanel(job, a.key) : '';
+      html += sectionShell(a.key, String(3+idx), a.label, a.sub, '' +
+        '<div class="status-row">' + statusButtons(a.key, s.status) + '</div>' +
+        extra +
+        linksExtra +
+        uploadExtra +
+        '<div class="field-grid span-1">' +
+          field('Notes / file name or link', 'sections.' + a.key + '.notes', s.notes, 'textarea', 'Where to find it, or what\'s still needed') +
+        '</div>'
+      );
+    });
+
+    inner.innerHTML = html;
+    wireJobDetailEvents(job);
+  }
+
+  function sectionShell(key, num, title, sub, bodyHtml){
+    var open = state.openSections[key];
+    return '' +
+      '<div class="section' + (open?' open':'') + '" data-section-key="' + key + '">' +
+        '<div class="section-head" data-toggle="' + key + '">' +
+          '<div class="section-num">' + num + '</div>' +
+          '<div class="section-titles">' +
+            '<div class="section-title">' + title + '</div>' +
+            '<div class="section-sub">' + sub + '</div>' +
+          '</div>' +
+          '<svg class="section-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3L11 8L6 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</div>' +
+        '<div class="section-body">' + bodyHtml + '</div>' +
+      '</div>';
+  }
+
+  function field(label, path, value, kind, placeholder){
+    var id = 'f_' + path.replace(/\./g,'_');
+    var full = kind === 'textarea' ? ' full' : '';
+    var input = kind === 'textarea'
+      ? '<textarea id="' + id + '" data-path="' + path + '" placeholder="' + escapeHtml(placeholder||'') + '">' + escapeHtml(value) + '</textarea>'
+      : '<input id="' + id + '" data-path="' + path + '" type="text" value="' + escapeHtml(value) + '" placeholder="' + escapeHtml(placeholder||'') + '" />';
+    return '<div class="field' + full + '"><label for="' + id + '">' + label + '</label>' + input + '</div>';
+  }
+
+  function readonlyField(label, value){
+    return '<div class="field"><label>' + label + '</label><input type="text" value="' + escapeHtml(value) + '" disabled style="color:var(--ink-faint);background:var(--surface-2);white-space:pre-line;" /></div>';
+  }
+
+  /* ---------------- events on job detail ---------------- */
+  function setPath(obj, path, value){
+    var parts = path.split('.');
+    var cur = obj;
+    for (var i=0;i<parts.length-1;i++){
+      cur = cur[parts[i]];
+    }
+    cur[parts[parts.length-1]] = value;
+  }
+
+  function wireJobDetailEvents(job){
+    // section toggles
+    document.querySelectorAll('[data-toggle]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var key = el.getAttribute('data-toggle');
+        state.openSections[key] = !state.openSections[key];
+        var sectionEl = document.querySelector('[data-section-key="' + key + '"]');
+        sectionEl.classList.toggle('open');
+      });
+    });
+
+    // text fields bound by data-path
+    document.querySelectorAll('[data-path]').forEach(function(el){
+      el.addEventListener('input', function(){
+        var path = el.getAttribute('data-path');
+        var value = cleanText(el.value);
+        setPath(job, path, value);
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, path, value);
+        scheduleSave(state.activeId);
+        renderJobListSoon();
+      });
+    });
+
+    // equipment row fields
+    document.querySelectorAll('#eqTbody .eq-field').forEach(function(el){
+      el.addEventListener('input', function(){
+        var tr = el.closest('tr');
+        var rowId = tr.getAttribute('data-row');
+        var field = el.getAttribute('data-field');
+        var row = job.equipment.find(function(r){ return r.id === rowId; });
+        if (row){
+          row[field] = el.value;
+          job.updatedAt = nowIso();
+          queueFieldChange(state.activeId, 'equipment', job.equipment);
+          scheduleSave(state.activeId);
+        }
+      });
+    });
+
+    // remove equipment row
+    document.querySelectorAll('.eq-row-del').forEach(function(el){
+      el.addEventListener('click', function(){
+        var rowId = el.getAttribute('data-del');
+        job.equipment = job.equipment.filter(function(r){ return r.id !== rowId; });
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'equipment', job.equipment);
+        scheduleSave(state.activeId);
+        renderJobDetail();
+        renderJobList();
+      });
+    });
+
+    // add equipment row
+    var addBtn = document.getElementById('eqAddRow');
+    if (addBtn){
+      addBtn.addEventListener('click', function(){
+        job.equipment.push({ id: uid(), ref:'', type:'AC', manufacturer:'', model:'' });
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'equipment', job.equipment);
+        scheduleSave(state.activeId);
+        renderJobDetail();
+        renderJobList();
+      });
+    }
+
+    // scan a WSD PDF for equipment schedule rows
+    var wsdScanInput = document.querySelector('[data-wsd-scan]');
+    if (wsdScanInput){
+      wsdScanInput.addEventListener('change', function(){
+        var file = wsdScanInput.files && wsdScanInput.files[0];
+        wsdScanInput.value = '';
+        if (!file) return;
+        state.wsdScan = { sourceName: file.name, status: 'scanning', candidates: [] };
+        renderJobDetail();
+        var reader = new FileReader();
+        reader.onload = function(){
+          loadPdfDoc(reader.result).then(function(doc){
+            return extractPdfLines(doc).then(function(lines){
+              var candidates = parseEquipmentCandidates(lines);
+              // Only worth flagging image-based pages when the text-based pass found nothing —
+              // if it already found real rows, there's nothing to fall back for.
+              var imagePages = candidates.length ? [] : findImageScheduleCandidatePages(lines);
+              state.wsdScan = { sourceName: file.name, status: 'done', candidates: candidates, doc: doc, imageFallbackPages: imagePages, imageScanning: null };
+              renderJobDetail();
+            });
+          }).catch(function(err){
+            state.wsdScan = { sourceName: file.name, status: 'error', candidates: [], error: err && err.message };
+            renderJobDetail();
+          });
+        };
+        reader.onerror = function(){
+          state.wsdScan = { sourceName: file.name, status: 'error', candidates: [], error: 'could not read file' };
+          renderJobDetail();
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // toggle / edit a scanned WSD candidate row
+    document.querySelectorAll('[data-cand-include]').forEach(function(el){
+      el.addEventListener('change', function(){
+        if (!state.wsdScan) return;
+        var id = el.getAttribute('data-cand-include');
+        var c = state.wsdScan.candidates.find(function(x){ return x.id === id; });
+        if (c) c.include = el.checked;
+      });
+    });
+    document.querySelectorAll('[data-cand-field]').forEach(function(el){
+      el.addEventListener('input', function(){
+        if (!state.wsdScan) return;
+        var tr = el.closest('[data-cand]');
+        var id = tr && tr.getAttribute('data-cand');
+        var c = state.wsdScan.candidates.find(function(x){ return x.id === id; });
+        if (c) c[el.getAttribute('data-cand-field')] = el.value;
+      });
+    });
+
+    // read a scanned schedule PAGE IMAGE with Claude (fallback for WSDs whose schedule
+    // table is a scanned/embedded picture rather than real text)
+    document.querySelectorAll('[data-wsd-image-scan]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var pageNum = Number(el.getAttribute('data-wsd-image-scan'));
+        var scan = state.wsdScan;
+        if (!scan || !scan.doc) return;
+        if (!sampleCap){ toast('Claude isn\'t available in this view right now'); return; }
+        scan.imageScanning = pageNum;
+        renderJobDetail();
+        renderPdfPageToBlob(scan.doc, pageNum).then(function(blob){
+          toast('Asking Claude to read page ' + pageNum + '…');
+          return sampleCap.json(WSD_IMAGE_SCAN_PROMPT, { images: blob, modelTier: 'default' });
+        }).then(function(rows){
+          var list = Array.isArray(rows) ? rows : [];
+          var added = list.map(function(r){
+            var type = r && ['AC','Fan','Other'].indexOf(r.type) !== -1 ? r.type : '';
+            return {
+              id: uid(),
+              ref: cleanText((r && r.ref) || ''),
+              type: type,
+              manufacturer: cleanText((r && r.manufacturer) || ''),
+              model: cleanText((r && r.model) || ''),
+              page: pageNum,
+              include: true
+            };
+          }).filter(function(c){ return c.ref || c.manufacturer || c.model; });
+          scan.imageScanning = null;
+          scan.candidates = (scan.candidates || []).concat(added);
+          renderJobDetail();
+          toast(added.length
+            ? ('Claude found ' + added.length + ' row' + (added.length===1?'':'s') + ' on page ' + pageNum + ' — review before adding.')
+            : ('Claude could not find any equipment rows on page ' + pageNum + '.'));
+        }).catch(function(err){
+          scan.imageScanning = null;
+          renderJobDetail();
+          toast(imageScanErrorMessage(err));
+        });
+      });
+    });
+
+    // add checked WSD candidates to the equipment schedule
+    var wsdCandAdd = document.getElementById('wsdCandAdd');
+    if (wsdCandAdd){
+      wsdCandAdd.addEventListener('click', function(){
+        var scan = state.wsdScan;
+        if (!scan) return;
+        var added = 0;
+        scan.candidates.forEach(function(c){
+          if (!c.include) return;
+          var typeGuess = (c.type && ['AC','Fan','Other'].indexOf(c.type) !== -1)
+            ? c.type
+            : (/fan|fantech/i.test(c.manufacturer) ? 'Fan' : 'AC');
+          job.equipment.push({ id: uid(), ref: c.ref, type: typeGuess, manufacturer: c.manufacturer, model: c.model });
+          added++;
+        });
+        if (!added){ toast('No rows checked'); return; }
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'equipment', job.equipment);
+        scheduleSave(state.activeId);
+        state.wsdScan = null;
+        renderJobDetail();
+        renderJobList();
+        toast('Added ' + added + ' row' + (added===1?'':'s') + ' from the WSD scan — double-check them against the drawing.');
+      });
+    }
+    var wsdCandDiscard = document.getElementById('wsdCandDiscard');
+    if (wsdCandDiscard){
+      wsdCandDiscard.addEventListener('click', function(){
+        state.wsdScan = null;
+        renderJobDetail();
+      });
+    }
+
+    // insert warranty terms
+    document.querySelectorAll('[data-insert-warranty]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var brand = el.getAttribute('data-insert-warranty');
+        var entry = WARRANTY_LIBRARY.find(function(w){ return w.brand === brand; });
+        if (!entry) return;
+        var existing = (job.sections.warranty.notes || '').trim();
+        var already = existing.indexOf(entry.text) !== -1;
+        if (already){ toast(brand + ' terms already inserted'); return; }
+        job.sections.warranty.notes = existing ? existing + '\n\n' + entry.text : entry.text;
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'sections.warranty.notes', job.sections.warranty.notes);
+        scheduleSave(state.activeId);
+        state.openSections.warranty = true;
+        renderJobDetail();
+        renderJobList();
+        toast(brand + ' warranty terms inserted');
+      });
+    });
+
+    // insert technical data spec
+    document.querySelectorAll('[data-insert-techdata]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var rowId = el.getAttribute('data-insert-techdata');
+        var row = job.equipment.find(function(r){ return r.id === rowId; });
+        if (!row) return;
+        var entry = matchTechData(row.manufacturer, row.model);
+        if (!entry) return;
+        var existing = (job.sections.technicalData.notes || '').trim();
+        var already = existing.indexOf(entry.text) !== -1;
+        if (already){ toast(entry.model + ' spec already inserted'); return; }
+        job.sections.technicalData.notes = existing ? existing + '\n\n' + entry.text : entry.text;
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'sections.technicalData.notes', job.sections.technicalData.notes);
+        scheduleSave(state.activeId);
+        state.openSections.technicalData = true;
+        renderJobDetail();
+        renderJobList();
+        toast(row.model + ' technical data inserted');
+      });
+    });
+
+    // file upload (Certificates / Drawings)
+    document.querySelectorAll('[data-file-upload]').forEach(function(el){
+      el.addEventListener('change', function(){
+        var sectionKey = el.getAttribute('data-file-upload');
+        var file = el.files && el.files[0];
+        el.value = '';
+        if (!file) return;
+        if (file.size > MAX_FILE_BYTES){
+          toast('Too large (' + formatBytes(file.size) + ') — max ~' + formatBytes(MAX_FILE_BYTES) + '. Use the notes field for bigger files.');
+          return;
+        }
+        var jobId = state.activeId;
+        var reader = new FileReader();
+        reader.onload = function(){
+          var result = reader.result; // data:mime;base64,XXXX
+          var comma = result.indexOf(',');
+          var base64 = comma !== -1 ? result.slice(comma+1) : result;
+          toast('Uploading ' + file.name + '…');
+          writeFileChunked(jobId, {
+            filename: file.name,
+            mime: file.type || 'application/octet-stream',
+            size: file.size,
+            section: sectionKey,
+            uploadedAt: nowIso()
+          }, base64).then(function(){
+            toast(file.name + ' uploaded');
+            refreshFiles(jobId);
+          }).catch(function(err){
+            toast('Upload failed — ' + (err && err.message ? err.message : 'try again'));
+          });
+        };
+        reader.onerror = function(){ toast('Could not read that file'); };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // download attached file
+    document.querySelectorAll('[data-file-download]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var fileId = el.getAttribute('data-file-download');
+        var all = state.filesByJob[state.activeId] || {};
+        var found = null;
+        Object.keys(all).forEach(function(sec){ (all[sec]||[]).forEach(function(f){ if (f.id === fileId) found = f; }); });
+        if (!found) return;
+        (async function(){
+          try{
+            if (found.chunkCount) toast('Fetching ' + found.filename + '…');
+            var base64 = await readFileChunked(state.activeId, found.id, found);
+            var binary = atob(base64);
+            var bytes = new Uint8Array(binary.length);
+            for (var i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+            var blob = new Blob([bytes], { type: found.mime || 'application/octet-stream' });
+            browserDownloadBlob(found.filename, blob);
+          }catch(err){
+            if (err && err.code === 'declined'){ /* silent */ }
+            else toast('Download failed — ' + (err && err.message ? err.message : 'try again'));
+          }
+        })();
+      });
+    });
+
+    // remove attached file
+    document.querySelectorAll('[data-file-remove]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var fileId = el.getAttribute('data-file-remove');
+        var jobId = state.activeId;
+        var all = state.filesByJob[jobId] || {};
+        var found = null;
+        Object.keys(all).forEach(function(sec){ (all[sec]||[]).forEach(function(f){ if (f.id === fileId) found = f; }); });
+        openModal('Remove this file?', 'This deletes it from the job permanently.', function(){
+          deleteFileChunked(jobId, fileId, found ? found.chunkCount : 0).then(function(){
+            toast('File removed');
+            refreshFiles(jobId);
+          }).catch(function(){ toast('Could not remove file'); });
+        });
+      });
+    });
+
+    // add linked file (no size limit — SharePoint/Simpro/shared drive URL)
+    document.querySelectorAll('[data-add-link]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var key = el.getAttribute('data-add-link');
+        var labelEl = document.querySelector('[data-link-label="' + key + '"]');
+        var urlEl = document.querySelector('[data-link-url="' + key + '"]');
+        var url = cleanText((urlEl.value || '').trim());
+        var label = cleanText((labelEl.value || '').trim());
+        if (!url){ toast('Paste a link first'); return; }
+        if (!/^https?:\/\//i.test(url)){ toast('Link should start with http:// or https://'); return; }
+        job.sections[key].links = job.sections[key].links || [];
+        job.sections[key].links.push({ id: uid(), label: label, url: url, addedAt: nowIso() });
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'sections.' + key + '.links', job.sections[key].links);
+        scheduleSave(state.activeId);
+        state.openSections[key] = true;
+        renderJobDetail();
+        renderJobList();
+        toast('Link added');
+      });
+    });
+
+    // remove linked file
+    document.querySelectorAll('[data-link-remove]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var linkId = el.getAttribute('data-link-remove');
+        APPENDICES.forEach(function(a){
+          var before = job.sections[a.key].links || [];
+          var after = before.filter(function(l){ return l.id !== linkId; });
+          if (after.length !== before.length){
+            job.sections[a.key].links = after;
+            queueFieldChange(state.activeId, 'sections.' + a.key + '.links', after);
+          }
+        });
+        job.updatedAt = nowIso();
+        scheduleSave(state.activeId);
+        renderJobDetail();
+      });
+    });
+
+    // status buttons
+    document.querySelectorAll('.status-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        var key = el.getAttribute('data-section');
+        var status = el.getAttribute('data-status');
+        job.sections[key].status = status;
+        job.updatedAt = nowIso();
+        queueFieldChange(state.activeId, 'sections.' + key + '.status', status);
+        scheduleSave(state.activeId);
+        renderJobDetail();
+        renderJobList();
+        // keep this section open after re-render
+        state.openSections[key] = true;
+        var sectionEl = document.querySelector('[data-section-key="' + key + '"]');
+        if (sectionEl) sectionEl.classList.add('open');
+      });
+    });
+
+    // top bar job name
+    var nameInput = document.getElementById('jobNameInput');
+    nameInput.addEventListener('input', function(){
+      job.name = nameInput.value;
+      job.updatedAt = nowIso();
+      queueFieldChange(state.activeId, 'name', job.name);
+      scheduleSave(state.activeId);
+      renderJobListSoon();
+      // duplicate-name warning banner depends on the name typed, so re-check on blur
+      // rather than every keystroke (avoids re-render fighting the caret mid-typing)
+    });
+    nameInput.addEventListener('blur', function(){ renderJobDetail(); });
+
+    var openDupBtn = document.querySelector('[data-open-dup]');
+    if (openDupBtn){
+      openDupBtn.addEventListener('click', function(){
+        selectJob(openDupBtn.getAttribute('data-open-dup'));
+      });
+    }
+  }
+
+  var jobListRenderTimer = null;
+  function renderJobListSoon(){
+    clearTimeout(jobListRenderTimer);
+    jobListRenderTimer = setTimeout(renderJobList, 150);
+  }
+
+  /* ---------------- persistence ---------------- */
+  // Record that a specific field on job `id` changed, so the next autosave writes ONLY
+  // that field (a Firestore-style dot-path update) instead of the whole job document.
+  // This is what stops one person's edit to (say) the equipment schedule from silently
+  // wiping out someone else's just-saved edit to a different field on the same job —
+  // the old code always did a full-document `.set(job)` from this tab's in-memory copy,
+  // which is stale the moment anyone else saves anything on that job.
+  function queueFieldChange(id, path, value){
+    pendingChanges[id] = pendingChanges[id] || {};
+    pendingChanges[id][path] = value;
+  }
+
+  function scheduleSave(id){
+    clearTimeout(saveTimers[id]);
+    saveTimers[id] = setTimeout(function(){
+      delete saveTimers[id];
+      autoSaveJob(id);
+    }, 500);
+  }
+
+  // Debounced autosave: writes only the fields queued by queueFieldChange since the
+  // last save (a targeted `.update()`), falling back to a full `.set()` only if nothing
+  // was queued (shouldn't normally happen, but keeps old call sites safe).
+  function autoSaveJob(id){
+    var job = state.jobs[id];
+    if (!job) { pendingChanges[id] = null; return Promise.resolve(); }
+    if (db){
+      var changes = pendingChanges[id];
+      pendingChanges[id] = null;
+      if (changes && Object.keys(changes).length){
+        changes.updatedAt = job.updatedAt;
+        return db.collection('jobs').doc(id).update(changes).catch(function(err){
+          toast('Could not save — ' + (err && err.message ? err.message : 'try again'));
+          throw err;
+        });
+      }
+      return db.collection('jobs').doc(id).set(job).catch(function(err){
+        toast('Could not save — ' + (err && err.message ? err.message : 'try again'));
+        throw err;
+      });
+    }
+    persistLocal();
+    return Promise.resolve();
+  }
+
+  // The manual "Save" button and job creation still write the FULL document — that's
+  // fine, since it's this tab's deliberate, explicit save of everything it currently
+  // shows, not a debounced side-effect of one small edit.
+  function saveJob(id){
+    var job = state.jobs[id];
+    if (!job) return Promise.resolve();
+    if (db){
+      return db.collection('jobs').doc(id).set(job).catch(function(err){
+        toast('Could not save — ' + (err && err.message ? err.message : 'try again'));
+        throw err;
+      });
+    }
+    persistLocal();
+    return Promise.resolve();
+  }
+
+  // Everything already autosaves ~500ms after each edit — this button is for the
+  // reassurance of an explicit, immediate save: skip the debounce and confirm.
+  function saveNow(id){
+    clearTimeout(saveTimers[id]);
+    delete saveTimers[id];
+    pendingChanges[id] = null; // the full save below covers whatever was pending
+    var btn = document.getElementById('saveBtn');
+    if (btn) btn.disabled = true;
+    return saveJob(id).then(function(){
+      toast('Saved');
+    }).catch(function(){ /* saveJob already toasted the failure */ }).then(function(){
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  var LOCAL_KEY = 'vp-oam-jobs-v1';
+  function persistLocal(){
+    try{
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({ jobs: state.jobs, order: state.order }));
+    }catch(e){ /* ignore */ }
+  }
+  function loadLocal(){
+    try{
+      var raw = localStorage.getItem(LOCAL_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        state.jobs = parsed.jobs || {};
+        state.order = parsed.order || [];
+      }
+    }catch(e){ /* ignore */ }
+  }
+
+  /* ---------------- job list actions ---------------- */
+  function selectJob(id){
+    state.activeId = id;
+    state.wsdScan = null;
+    renderJobList();
+    renderJobDetail();
+    if (typeof closeSidebar === 'function') closeSidebar();
+    refreshFiles(id);
+  }
+
+  function refreshFiles(jobId){
+    if (!db || !jobId) return;
+    var bySection = {};
+    APPENDICES.forEach(function(a){ bySection[a.key] = []; });
+    filesCollection(jobId).get().then(function(snap){
+      snap.docs.forEach(function(d){
+        var data = d.data();
+        if (!data) return;
+        // note: `data.data` is only present for small (unchunked) files here — full bytes
+        // are fetched on demand via readFileChunked() when downloading or exporting.
+        var entry = { id: d.id, filename: data.filename, mime: data.mime, size: data.size, data: data.data, chunkCount: data.chunkCount || 0, section: data.section, uploadedAt: data.uploadedAt };
+        if (bySection[entry.section]) bySection[entry.section].push(entry);
+      });
+      state.filesByJob[jobId] = bySection;
+      if (state.activeId === jobId) renderJobDetail();
+    }).catch(function(){ /* leave whatever was cached */ });
+  }
+
+  function createJob(){
+    var id = uid();
+    var job = blankJob('');
+    state.jobs[id] = job;
+    state.order.unshift(id);
+    state.activeId = id;
+    state.wsdScan = null;
+    if (db){
+      db.collection('jobs').doc(id).set(job).catch(function(){ toast('Could not create job'); });
+    } else {
+      persistLocal();
+    }
+    renderJobList();
+    renderJobDetail();
+    setTimeout(function(){
+      var el = document.getElementById('jobNameInput');
+      if (el) el.focus();
+    }, 30);
+  }
+
+  function confirmDeleteJob(){
+    var job = state.jobs[state.activeId];
+    if (!job) return;
+    openModal(
+      'Delete this job manual?',
+      'This removes "' + (job.name || 'Untitled job') + '" and everything entered for it. This can\'t be undone.',
+      function(){
+        var id = state.activeId;
+        delete state.jobs[id];
+        state.order = state.order.filter(function(x){ return x !== id; });
+        state.activeId = state.order.length ? state.order[0] : null;
+        if (db){
+          db.collection('jobs').doc(id).delete().catch(function(){});
+        } else {
+          persistLocal();
+        }
+        renderJobList();
+        renderJobDetail();
+      }
+    );
+  }
+
+  function openModal(title, body, onConfirm){
+    var backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = '' +
+      '<div class="modal">' +
+        '<h3>' + escapeHtml(title) + '</h3>' +
+        '<p>' + escapeHtml(body) + '</p>' +
+        '<div class="modal-actions">' +
+          '<button class="btn" id="modalCancel">Cancel</button>' +
+          '<button class="btn" style="background:var(--danger);border-color:var(--danger);color:#fff;" id="modalConfirm">Delete</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', function(e){ if (e.target === backdrop) document.body.removeChild(backdrop); });
+    backdrop.querySelector('#modalCancel').addEventListener('click', function(){ document.body.removeChild(backdrop); });
+    backdrop.querySelector('#modalConfirm').addEventListener('click', function(){
+      onConfirm();
+      document.body.removeChild(backdrop);
+    });
+  }
+
+  /* ---------------- preview ---------------- */
+  function openPreviewModal(job){
+    job = sanitizeDeep(job);
+    var jobName = (job.name && job.name.trim()) ? job.name.trim() : 'Job Name';
+    var b = job.builder;
+
+    var eqRows = job.equipment.length
+      ? job.equipment.map(function(r){
+          return '<tr><td>' + escapeHtml(r.ref||'—') + '</td><td>' + escapeHtml(r.manufacturer||'—') + '</td><td>' + escapeHtml(r.model||'—') + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="3" class="preview-empty">No equipment added yet.</td></tr>';
+
+    var appendixHtml = APPENDICES.map(function(a){
+      var s = job.sections[a.key];
+      var links = s.links || [];
+      var attached = ((state.filesByJob[state.activeId] || {})[a.key]) || [];
+      var linksHtml = links.length
+        ? '<ul class="preview-mini-list">' + links.map(function(l){ return '<li><a href="' + escapeHtml(l.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(l.label || l.url) + '</a></li>'; }).join('') + '</ul>'
+        : '';
+      var filesHtml = attached.length
+        ? '<ul class="preview-mini-list">' + attached.map(function(f){ return '<li>' + escapeHtml(f.filename) + ' <span style="color:var(--ink-faint);">(' + formatBytes(f.size||0) + ')</span></li>'; }).join('') + '</ul>'
+        : '';
+      var notesHtml = (s.notes && s.notes.trim())
+        ? '<p style="white-space:pre-wrap;">' + escapeHtml(s.notes.trim()) + '</p>'
+        : (!links.length && !attached.length ? '<p class="preview-empty">Nothing recorded yet.</p>' : '');
+      return '' +
+        '<div class="preview-appendix">' +
+          '<div class="preview-appendix-head">' +
+            '<span class="preview-appendix-title">' + escapeHtml(a.label) + '</span>' +
+            '<span class="chip ' + STATUS_META[s.status].chip + '"><span class="chip-dot"></span>' + STATUS_META[s.status].label + '</span>' +
+          '</div>' +
+          notesHtml + linksHtml + filesHtml +
+        '</div>';
+    }).join('');
+
+    var wsdHtml = (job.wsdNotes && job.wsdNotes.trim())
+      ? '<p><i>WSD reference: ' + escapeHtml(job.wsdNotes.trim()) + '</i></p>'
+      : '';
+
+    function pHtml(list){
+      return list.map(function(t){
+        return '<p>' + escapeHtml(t.replace('{{JOB}}', jobName)) + '</p>';
+      }).join('');
+    }
+    function subH(text){ return '<div class="preview-sub">' + escapeHtml(text) + '</div>'; }
+    function pageBreak(){ return '<div class="preview-pagebreak"></div>'; }
+    function innerHeader(){
+      return '' +
+        '<div class="preview-innerhead">' +
+          '<div><div class="pih-title">Operation and Maintenance Manual</div><div class="pih-job">Project Name: ' + escapeHtml(jobName) + '</div></div>' +
+          '<img src="' + LOGO_DATAURL + '" alt="" class="pih-logo" />' +
+        '</div>';
+    }
+
+    var content = '' +
+      '<div class="preview-doc">' +
+        '<div class="preview-cover">' +
+          '<div class="pc-logo-row">' +
+            '<img src="' + LOGO_DATAURL + '" alt="" class="pc-logo" />' +
+            '<span class="pc-brand">Victorian Projects</span>' +
+          '</div>' +
+          '<div class="pc-bar"></div>' +
+          '<div class="pc-title">Mechanical Services - Operation and Maintenance Manual</div>' +
+          '<div class="pc-job">' + escapeHtml(jobName) + '</div>' +
+          '<div class="pc-doc">Document No: ' + escapeHtml(job.docNo||'VP-OAM') + '</div>' +
+          '<div class="pc-address">Victorian Projects<br/>' + escapeHtml(CONTRACTOR.address).replace('\n','<br/>') + '<br/>Telephone: ' + escapeHtml(CONTRACTOR.phone) + '<br/>www.victorianprojects.com.au</div>' +
+          '<div class="pc-bar"></div>' +
+        '</div>' +
+
+        pageBreak() + innerHeader() +
+        '<div class="preview-h">1. Contact Information</div>' +
+        '<table class="preview-table">' +
+          '<thead><tr><th></th><th>Builder</th><th>Contractor</th></tr></thead>' +
+          '<tbody>' +
+            '<tr><td>Name</td><td>' + escapeHtml(b.name||'—') + '</td><td>' + escapeHtml(CONTRACTOR.name) + '</td></tr>' +
+            '<tr><td>Address</td><td style="white-space:pre-line;">' + escapeHtml(b.address||'—') + '</td><td style="white-space:pre-line;">' + escapeHtml(CONTRACTOR.address) + '</td></tr>' +
+            '<tr><td>Phone</td><td>' + escapeHtml(b.phone||'—') + '</td><td>' + escapeHtml(CONTRACTOR.phone) + '</td></tr>' +
+            '<tr><td>Email</td><td>' + escapeHtml(b.email||'—') + '</td><td>' + escapeHtml(CONTRACTOR.email) + '</td></tr>' +
+            '<tr><td>Project &amp; Job No.</td><td colspan="2">' + escapeHtml(job.projectJobNumber||'—') + '</td></tr>' +
+          '</tbody>' +
+        '</table>' +
+        subH('1.1 Introduction') + pHtml(STATIC_TEXT.introduction) +
+        subH('1.2 Scope') + pHtml(STATIC_TEXT.scope) +
+        subH('1.3 Contents') + pHtml(STATIC_TEXT.contents) +
+
+        pageBreak() + innerHeader() +
+        '<div class="preview-h">2. Defects Liability</div>' +
+        subH('2.1 Equipment Schedule — AC Units & Fans') +
+        '<table class="preview-table">' +
+          '<thead><tr><th>Reference</th><th>Manufacturer</th><th>Model No.</th></tr></thead>' +
+          '<tbody>' + eqRows + '</tbody>' +
+        '</table>' +
+        wsdHtml +
+        subH('2.2 Commissioning Process') + pHtml(STATIC_TEXT.commissioning) +
+        subH('3. Asset Operation and Maintenance Information — 3.1 HVAC Equipment Start-up Tests') + pHtml(STATIC_TEXT.startupTests) +
+
+        pageBreak() + innerHeader() +
+        '<div class="preview-h">4. Scope &amp; Responsibilities (Isolation and Permit to Work)</div>' +
+        pHtml(STATIC_TEXT.isolationPurpose) +
+        subH('Roles and Responsibilities') + pHtml(STATIC_TEXT.responsibilities) +
+
+        pageBreak() + innerHeader() +
+        '<div class="preview-h">5. Isolation</div>' + pHtml(STATIC_TEXT.isolationProcess) +
+        '<div class="preview-h">6. Training Requirements</div>' + pHtml(STATIC_TEXT.training) +
+        subH('6.1 Complete List of Fault Conditions') + pHtml(STATIC_TEXT.faultConditions) +
+        subH('6.2 Emergency Procedures') + pHtml(STATIC_TEXT.emergency) +
+
+        pageBreak() + innerHeader() +
+        '<div class="preview-h">Appendices</div>' +
+        appendixHtml +
+      '</div>';
+
+    var backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = '' +
+      '<div class="modal modal-lg">' +
+        '<div class="modal-lg-head">' +
+          '<h3>Preview — ' + escapeHtml(jobName) + '</h3>' +
+          '<button class="modal-lg-close" id="previewClose" title="Close">' +
+            '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="modal-lg-body">' + content + '</div>' +
+        '<div class="modal-lg-foot">' +
+          '<button class="btn" id="previewCancel">Close</button>' +
+          '<button class="btn btn-primary" id="previewExport">Export manual (PDF)</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(backdrop);
+    function close(){ document.body.removeChild(backdrop); }
+    backdrop.addEventListener('click', function(e){ if (e.target === backdrop) close(); });
+    backdrop.querySelector('#previewClose').addEventListener('click', close);
+    backdrop.querySelector('#previewCancel').addEventListener('click', close);
+    backdrop.querySelector('#previewExport').addEventListener('click', function(){ close(); exportPdf(); });
+  }
+
+  /* ---------------- PDF export ---------------- */
+  var STATIC_TEXT = {
+    introduction: [
+      "This manual describes all the Mechanical Services Operating and Maintenance requirements relating to the Mechanical Services Systems supplied, installed and commissioned to {{JOB}}.",
+      "The manual, relating to the services installation, must be read in conjunction with other related documentation, which forms part of the overall Operating and Maintenance File prepared by the Contractor.",
+      "The Operating and Maintenance file is a set of record documentation (a suite of manuals and drawings) for the client/end user focused primarily on dealing with maintenance, repair or construction works carried out to the premises.",
+      "The file should be made available for any persons who need to work on or operate any building related tasks.",
+      "Any future works carried out to the building or its services should be documented and recorded in the Operating and Maintenance File."
+    ],
+    scope: [
+      "This Operating and Maintenance Manual has been prepared to provide guidance and recommendations to assist:",
+      "• Users of the building",
+      "• Managers of the building and services",
+      "• Employees (both directly employed staff and contractors) who carry out maintenance, repair or new works within the building.",
+      "In the understanding, running and maintenance of the services installed."
+    ],
+    contents: [
+      "To obtain the most benefit from this manual, it must be read in conjunction with all related documents located in the other related sections of this manual as well as the overall Operating and Maintenance File.",
+      "In addition to the documentation directly related to the systems covered by this manual, other inter-related documentation may need to be consulted to obtain a more comprehensive understanding of not only the service or plant in question but also its possible effect on other services and areas. These documents will be included within the suite of documents forming the Operating and Maintenance file and include building structure and fabric information.",
+      "Reference should be made to the Operating and Maintenance File."
+    ],
+    commissioning: [
+      "The following commissioning activities will be undertaken:",
+      "– Point to point testing",
+      "– Control function testing",
+      "– Historical trending function testing",
+      "– Point alarm function testing",
+      "– Backup and save commissioned system",
+      "– Client witness final commissioning",
+      "– Pre-commissioning",
+      "Pre-commissioning activities will be required to be undertaken on all relevant control equipment to confirm correct installation positioning and integrity.",
+      "HVAC System/s Start Up: All safety procedures to be carried out prior to system/s start up. All JHAs relating to task and safety procedures to be completed. Safety Procedures/Pre-checks once complete to be signed off by a senior member of Victorian Projects, who is to be present while power is switched to equipment.",
+      "Visual inspection is carried out on all operating plant/equipment to ensure no detrimental irregularities are present during and after initial start-up, and to determine whether it is desirable to continue operation of plant/equipment: testing and commissioning, control system start-up test, point to point testing, confirmation of correct voltages to all DDC equipment.",
+      "Remedial Works/Action: remedial works may be required where an operating piece of plant/equipment does not meet design criteria. The Client will be informed by the HVAC services contractor of any non-compliance/non-performance issues and of any recommended remedial work/actions. Re-testing of any plant equipment affected by remedial works/action will be carried out to ensure design criteria are met.",
+      "Commissioning Report: on completion of commissioning works, a record of all commissioning data will be issued, including a copy of relevant As-Built drawings, all completed equipment test data sheets, a record of any significant departures from design specifications and manufacturer's recommendations, and a record of any outstanding remedial works/action required.",
+      "Witness and Handover: on completion of commissioning works the client will be invited to witness operation of HVAC controls plant/equipment to ensure design criteria is met and recorded data is true and correct. It is recommended that mechanical maintenance staff attend the handover for basic training, or engage Victorian Projects during the warranty period to maintain the plant."
+    ],
+    startupTests: [
+      "Victorian Projects, or the vendor with contractual obligation to provide start-up services, shall start up the systems and equipment in accordance with the Contract Documents and manufacturer's requirements. Completed start-up check sheets are then provided to the CA, who may observe and document these start-up tests.",
+      "At a minimum, start-up tests should include: Manufacturer's Name, Model Number, Type and Size, Serial Number, Actual Settings or Adjustments, Actual Electrical Characteristics, Actual Load, and Operating data as required by the manufacturer."
+    ],
+    isolationPurpose: [
+      "The purpose of this procedure is to provide direction for isolation and tagging of energy sources in order to minimise any risk to personnel or the environment, and to ensure compliance with legislative requirements.",
+      "This procedure is to be followed as a minimum on Victorian Projects worksites. Where a client procedure applies, Victorian Projects will follow that procedure provided it meets or exceeds the controls of this Standard Operating Procedure.",
+      "This procedure establishes the processes to be followed for hazard identification and risk assessment of energy sources prior to commencement, so that people are not exposed to risk when working with energy."
+    ],
+    responsibilities: [
+      "CLIENT Construction Manager (Permit Authority): authorises competent persons to carry out isolations and issue, suspend or cancel permits; formally appoints the Senior Isolating Authority (Electrical) and Senior Isolating Authority (Mechanical); ensures full compliance with this procedure.",
+      "Company HSS Site Manager: audits and monitors compliance; identifies remedial corrective actions; ensures training records for authorised persons are maintained.",
+      "Senior Isolating Authority (Electrical): communicates and examines intended high voltage switching for possible impacts; authorises high voltage switching, isolation and earthing under the Permit to Work system; recommends additional Authorised Isolators.",
+      "Authorised Isolator (Electrical / Mechanical): a suitably licensed and experienced person, trained in the Permit to Work system, who identifies isolations required, conducts and confirms isolation integrity, records completion on the Isolation Certificate, and verifies locks and tags are in place.",
+      "Permit Issuer: confirms safe working practices prior to issuing a Permit, ensures isolation/lockout/tag-out and hand-back requirements are met, completes documentation and places their lock and tag onto the lock box.",
+      "Victorian Projects' Project Manager: conducts risk assessments, ensures isolation equipment is available and used correctly, ensures control measures are implemented, ensures personnel are competent and trained, and audits effective implementation of this procedure.",
+      "Victorian Projects Supervisors: ensure required training is complete and documentation is in place prior to commencing tasks, review JHA/risk assessments on site, conduct workplace inspections, and ensure Permit and Lock/Tag requirements are met.",
+      "Employees, Contractors & Sub-contractors: comply with this procedure, work method statements, Permit to Work and JHA requirements; attend the pre-start meeting; confirm isolation and lock/tag requirements are in place.",
+      "Permit Holder: witnesses isolations with the Authorised Isolator, confirms equipment is de-energised and locked out before personnel place their personal danger tag and lock, and ensures no work commences on isolated equipment until the Isolation Register is signed.",
+      "Permit Worker: ensures equipment is de-energised/isolated/locked out before commencing work, places their personal danger tag and lock under the Permit Holder's direction, and signs on/off the Isolation Certificate for each isolation point."
+    ],
+    isolationProcess: [
+      "Positive isolations shall always be undertaken at the energy source, not relying on control circuitry (stop switches, interlocks, emergency stops, lanyards, instrument air etc.) as a means of isolation.",
+      "Single Isolation Process (Permit Required): a single isolation is where only one electrical and/or mechanical isolation is required. Single isolations do not require an Isolation Certificate, but a Permit must still be raised. The Authorised Isolator(s) must sign onto the permit before work commences.",
+      "Group Isolation Process (Isolation Certificate and Permit Required): applies where more than one isolation is required, or the isolation is performed for a third party. All isolations must be completed and documented on the Isolation Certificate prior to the Permit being issued. Blue isolation locks are used for all group isolations; the Permit Coordinator places a padlock and isolation tag on the lockbox, which prevents access to the keys until work is complete.",
+      "Situations where a permit is not required: equipment of a non-hard-wired domestic type (electric jugs, televisions etc.), or mobile plant powered from non-operational sources, where local isolation methods (disconnection of batteries or the power outlet) are undertaken prior to work commencing."
+    ],
+    training: [
+      "All personnel required to perform isolations shall receive training and instruction on the associated risks and necessary control measures, in accordance with Victorian Projects Training requirements. An Authorised Isolator shall only be authorised to carry out isolations in accordance with their specified training and competency for electrical and/or mechanical isolations as applicable.",
+      "It remains the responsibility of the Contractor (employer) to verify the competency of all persons associated with the requirements of this procedure. Records of training are to include the names of persons trained and dates of attendance, the title and number of the training course and an outline of its contents, the duration of training, the names and qualifications of the person providing training, and whether the training program is accredited by a statutory body, government department, educational institution, RTO or other organisation.",
+      "All training records shall be made available to Victorian Projects upon request."
+    ],
+    faultConditions: [
+      "This includes both electrical and mechanical troubleshooting. Contact the manufacturer."
+    ],
+    emergency: [
+      "In the event of an emergency only, please follow the steps below to ensure the matter is attended to promptly.",
+      "During the Defects Liability Period — Step 1: contact Victorian Projects as the relevant contractor responsible for the installation of the Mechanical Services. Step 2: if unable to make contact from Step 1, contact the Head Contractor.",
+      "Post Defects Liability Period — contact the Head Contractor."
+    ]
+  };
+
+  function exportPdf(){
+    var job = state.jobs[state.activeId];
+    if (!job) return;
+    job = sanitizeDeep(job);
+    if (!window.jspdf){ toast('PDF library still loading — try again in a moment'); return; }
+
+    var jobName = (job.name && job.name.trim()) ? job.name.trim() : 'Job Name';
+    var doc = new window.jspdf.jsPDF({ unit:'pt', format:'a4' });
+    var pageW = doc.internal.pageSize.getWidth();
+    var margin = 48;
+    var contentW = pageW - margin*2;
+    var accent = [43,108,176];
+    var navy = [23,51,80];
+    var ink = [27,37,48];
+    var softInk = [92,107,122];
+    var tocEntries = [];
+
+    function footerHeader(pageJobName){
+      var pageCount = doc.internal.getNumberOfPages();
+      for (var i=1;i<=pageCount;i++){
+        doc.setPage(i);
+        if (i > 1){
+          doc.setDrawColor(220,226,232);
+          doc.setLineWidth(0.75);
+          doc.line(margin, 56, pageW-margin, 56);
+          doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(softInk[0],softInk[1],softInk[2]);
+          doc.text('Operation and Maintenance Manual', margin, 40);
+          doc.text('Project Name: ' + pageJobName, margin, 51);
+          try{ doc.addImage(LOGO_DATAURL, 'PNG', pageW-margin-66, 6, 66, 37.3); }catch(e){}
+        }
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(softInk[0],softInk[1],softInk[2]);
+        doc.text('Victorian Projects — VP-OAM', margin, doc.internal.pageSize.getHeight()-28);
+        doc.text('Page ' + i + ' of ' + pageCount, pageW-margin, doc.internal.pageSize.getHeight()-28, { align:'right' });
+      }
+    }
+
+    function heading(text, y){
+      tocEntries.push({ text: text, page: doc.internal.getNumberOfPages(), bold: true });
+      doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(navy[0],navy[1],navy[2]);
+      doc.text(text, margin, y);
+      doc.setDrawColor(accent[0],accent[1],accent[2]); doc.setLineWidth(1.2);
+      doc.line(margin, y+5, margin+26, y+5);
+      return y + 22;
+    }
+    function subheading(text, y){
+      tocEntries.push({ text: text, page: doc.internal.getNumberOfPages(), bold: false });
+      doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(accent[0],accent[1],accent[2]);
+      doc.text(text, margin, y);
+      return y + 15;
+    }
+    function paragraphs(list, y, jobNameVal){
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(ink[0],ink[1],ink[2]);
+      list.forEach(function(p){
+        var txt = p.replace('{{JOB}}', jobNameVal);
+        var lines = doc.splitTextToSize(txt, contentW);
+        lines.forEach(function(line){
+          if (y > 760){ doc.addPage(); y = 70; }
+          doc.text(line, margin, y);
+          y += 13;
+        });
+        y += 5;
+      });
+      return y;
+    }
+    function ensureSpace(y, needed){
+      if (y + needed > 760){ doc.addPage(); return 70; }
+      return y;
+    }
+    function hazardTable(title, rows, y){
+      y = ensureSpace(y, 40);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(ink[0],ink[1],ink[2]);
+      doc.text(title, margin, y);
+      y += 10;
+      doc.autoTable({
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Activity','Hazard']],
+        body: rows,
+        styles: { font:'helvetica', fontSize:9, cellPadding:6, textColor: ink, lineColor:[221,228,234], lineWidth:0.5 },
+        headStyles: { fillColor: navy, textColor:255, fontStyle:'bold' },
+        columnStyles: { 0: { cellWidth: contentW*0.32 } },
+        theme: 'grid'
+      });
+      return doc.lastAutoTable.finalY + 16;
+    }
+
+    // ---- Page 1: cover ----
+    try{ doc.addImage(LOGO_DATAURL, 'PNG', margin, 66, 140, 79.1); }catch(e){}
+    doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(navy[0],navy[1],navy[2]);
+    doc.text('Victorian Projects', margin+152, 112);
+    doc.setDrawColor(20,20,20); doc.setFillColor(20,20,20); doc.rect(margin, 160, contentW, 6, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(16); doc.setTextColor(ink[0],ink[1],ink[2]);
+    doc.text('Mechanical Services - Operation and Maintenance Manual', pageW/2, 210, { align:'center', maxWidth: contentW });
+    doc.setFont('helvetica','bold'); doc.setFontSize(18);
+    doc.text(jobName, pageW/2, 240, { align:'center', maxWidth: contentW });
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(softInk[0],softInk[1],softInk[2]);
+    doc.text('Document No: ' + (job.docNo || 'VP-OAM'), pageW/2, 264, { align:'center' });
+    doc.setFontSize(9);
+    var coverLines = ['Victorian Projects', CONTRACTOR.address.split('\n')[0], CONTRACTOR.address.split('\n')[1], 'Telephone: ' + CONTRACTOR.phone, 'www.victorianprojects.com.au'];
+    var cy = 690;
+    coverLines.forEach(function(l){ doc.text(l, pageW/2, cy, { align:'center' }); cy += 13; });
+    doc.setFillColor(20,20,20); doc.rect(margin, 795, contentW, 6, 'F');
+
+    // ---- Page 2: Contents (placeholder — filled in once every page number is known) ----
+    doc.addPage();
+    var tocPageNumber = doc.internal.getNumberOfPages();
+
+    // ---- Page 3: Contact information ----
+    doc.addPage();
+    var y = 90;
+    y = heading('1. Contact Information', y);
+    doc.autoTable({
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['', 'Builder', 'Contractor']],
+      body: [
+        ['Name', job.builder.name || '', CONTRACTOR.name],
+        ['Address', job.builder.address || '', CONTRACTOR.address],
+        ['Phone', job.builder.phone || '', CONTRACTOR.phone],
+        ['Fax', job.builder.fax || '-', CONTRACTOR.fax],
+        ['Email', job.builder.email || '-', CONTRACTOR.email],
+        ['Project & Job Number', job.projectJobNumber || '', '']
+      ],
+      styles: { font:'helvetica', fontSize:9, cellPadding:6, textColor: ink, lineColor:[221,228,234], lineWidth:0.5 },
+      headStyles: { fillColor: navy, textColor: 255, fontStyle:'bold' },
+      theme: 'grid'
+    });
+    y = doc.lastAutoTable.finalY + 22;
+    y = subheading('1.1 Introduction', y);
+    y = paragraphs(STATIC_TEXT.introduction, y, jobName);
+    y = ensureSpace(y, 60);
+    y = subheading('1.2 Scope', y);
+    y = paragraphs(STATIC_TEXT.scope, y, jobName);
+    y = ensureSpace(y, 60);
+    y = subheading('1.3 Contents', y);
+    y = paragraphs(STATIC_TEXT.contents, y, jobName);
+
+    // ---- Page: Defects liability / equipment schedule ----
+    doc.addPage();
+    y = 90;
+    y = heading('2. Defects Liability', y);
+    y = subheading('2.1 Equipment Schedule — AC Units & Fans (List of Equipment Covered by Warranty)', y);
+    var eqRows = job.equipment.length
+      ? job.equipment.map(function(r){ return [r.ref||'', r.manufacturer||'', r.model||'']; })
+      : [['—','—','—']];
+    doc.autoTable({
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Reference','Manufacturer','Model No.']],
+      body: eqRows,
+      styles: { font:'helvetica', fontSize:9, cellPadding:6, textColor: ink, lineColor:[221,228,234], lineWidth:0.5 },
+      headStyles: { fillColor: accent, textColor:255, fontStyle:'bold' },
+      theme: 'grid'
+    });
+    y = doc.lastAutoTable.finalY + 16;
+    if (job.wsdNotes && job.wsdNotes.trim()){
+      y = ensureSpace(y, 40);
+      doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(softInk[0],softInk[1],softInk[2]);
+      var wsdLines = doc.splitTextToSize('WSD reference: ' + job.wsdNotes.trim(), contentW);
+      wsdLines.forEach(function(l){ doc.text(l, margin, y); y += 12; });
+      y += 10;
+    }
+    y = ensureSpace(y, 40);
+    y = subheading('2.2 Commissioning Process', y);
+    y = paragraphs(STATIC_TEXT.commissioning, y, jobName);
+    y = hazardTable('Special or Primary Hazards', [
+      ['Electrical Work', 'Persons not familiar with Safe Work Procedures (SWP) for Terminating.'],
+      ['Commissioning Distribution Boards & HVAC systems', 'Equipment failure'],
+      ['Commissioning Distribution Boards & HVAC systems', 'Unauthorized persons in work area.']
+    ], y);
+    y = ensureSpace(y, 60);
+    y = subheading('3. Asset Operation and Maintenance Information — 3.1 HVAC Equipment Start-up Tests', y);
+    y = paragraphs(STATIC_TEXT.startupTests, y, jobName);
+    y = hazardTable('Control Measures Required', [
+      ['Electrical Work', 'Only licensed electrical workers to carry out electrical work.'],
+      ['Electrical Work', 'All workers to be familiar with:\n- AS 3000 - Wiring Rules'],
+      ['Electrical Work', 'Use only specified equipment.'],
+      ['Commissioning Distribution Boards & HVAC Systems', 'Establish an Exclusive Control Zone and monitor persons in area.']
+    ], y);
+
+    // ---- Page: isolation / scope / responsibilities ----
+    doc.addPage();
+    y = 90;
+    y = heading('4. Scope & Responsibilities (Isolation and Permit to Work)', y);
+    y = paragraphs(STATIC_TEXT.isolationPurpose, y, jobName);
+    y = ensureSpace(y, 40);
+    y = subheading('Roles and Responsibilities', y);
+    y = paragraphs(STATIC_TEXT.responsibilities, y, jobName);
+
+    doc.addPage();
+    y = 90;
+    y = heading('5. Isolation', y);
+    y = paragraphs(STATIC_TEXT.isolationProcess, y, jobName);
+    y = ensureSpace(y, 60);
+    y = heading('6. Training Requirements', y);
+    y = paragraphs(STATIC_TEXT.training, y, jobName);
+    y = ensureSpace(y, 60);
+    y = subheading('6.1 Complete List of Fault Conditions', y);
+    y = paragraphs(STATIC_TEXT.faultConditions, y, jobName);
+    y = ensureSpace(y, 60);
+    y = subheading('6.2 Emergency Procedures', y);
+    y = paragraphs(STATIC_TEXT.emergency, y, jobName);
+
+    // ---- Appendix pages ----
+    function isEmbeddableFile(f){
+      var mime = (f.mime||'').toLowerCase();
+      var name = (f.filename||'').toLowerCase();
+      if (mime === 'application/pdf' || /\.pdf$/.test(name)) return 'pdf';
+      if (/^image\/(png)$/.test(mime) || /\.png$/.test(name)) return 'png';
+      if (/^image\/(jpe?g)$/.test(mime) || /\.jpe?g$/.test(name)) return 'jpg';
+      return null;
+    }
+    var embedPlan = []; // { anchorPage, label, files: [{...file, kind}] }
+    APPENDICES.forEach(function(a, idx){
+      doc.addPage();
+      y = 90;
+      y = heading('Appendix ' + (idx+1) + '. ' + a.label.split('—')[1].trim(), y);
+      var s = job.sections[a.key];
+      // Status label and "no notes recorded" placeholder are internal tool bookkeeping,
+      // not part of the official template — only print real notes when present.
+      if (s.notes && s.notes.trim()){
+        doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(ink[0],ink[1],ink[2]);
+        var noteLines = doc.splitTextToSize(s.notes.trim(), contentW);
+        noteLines.forEach(function(l){ doc.text(l, margin, y); y += 13; });
+        y += 10;
+      }
+      var attached = ((state.filesByJob[state.activeId] || {})[a.key]) || [];
+      var embeddable = [];
+      attached.forEach(function(f){
+        var kind = isEmbeddableFile(f);
+        if (kind) embeddable.push(Object.assign({ kind: kind }, f));
+      });
+      var nonEmbeddable = attached.filter(function(f){ return !isEmbeddableFile(f); });
+      if (nonEmbeddable.length){
+        y = ensureSpace(y, 20 + nonEmbeddable.length*13);
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(ink[0],ink[1],ink[2]);
+        doc.text('Attached (open separately — not viewable inline):', margin, y); y += 14;
+        doc.setFont('helvetica','normal'); doc.setFontSize(9);
+        nonEmbeddable.forEach(function(f){
+          doc.text('• ' + f.filename + ' (' + formatBytes(f.size||0) + ')', margin+4, y); y += 13;
+        });
+        y += 6;
+      }
+      var links = (s.links || []);
+      if (links.length){
+        y = ensureSpace(y, 20 + links.length*13);
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(ink[0],ink[1],ink[2]);
+        doc.text('Linked files (live, not embedded):', margin, y); y += 14;
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(accent[0],accent[1],accent[2]);
+        links.forEach(function(l){
+          var lineText = '• ' + (l.label || l.url);
+          var lines = doc.splitTextToSize(lineText, contentW-4);
+          lines.forEach(function(ln){ y = ensureSpace(y, 13); doc.text(ln, margin+4, y); y += 13; });
+        });
+        doc.setTextColor(ink[0],ink[1],ink[2]);
+        y += 6;
+      }
+      if (embeddable.length){
+        embedPlan.push({ anchorPage: doc.internal.getNumberOfPages(), label: a.label, files: embeddable });
+        // no extra doc.addPage() here — the next appendix (or end of doc) already starts its own
+        // fresh page, and adding one here would leave a permanently blank page behind after merge.
+      } else if (!attached.length && !links.length){
+        doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(softInk[0],softInk[1],softInk[2]);
+        doc.text('Nothing recorded for this appendix yet.', margin, y, { maxWidth: contentW });
+      }
+    });
+
+    // ---- Fill in the Contents page now that every heading's real page number is known ----
+    doc.setPage(tocPageNumber);
+    var tocY = 90;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(navy[0],navy[1],navy[2]);
+    doc.text('Contents', margin, tocY);
+    doc.setDrawColor(accent[0],accent[1],accent[2]); doc.setLineWidth(1.2);
+    doc.line(margin, tocY+5, margin+26, tocY+5);
+    tocY += 22 + 6;
+    tocEntries.forEach(function(entry){
+      doc.setFont('helvetica', entry.bold ? 'bold' : 'normal');
+      doc.setFontSize(entry.bold ? 10 : 9.5);
+      doc.setTextColor(entry.bold ? navy[0] : ink[0], entry.bold ? navy[1] : ink[1], entry.bold ? navy[2] : ink[2]);
+      var indent = entry.bold ? 0 : 14;
+      var label = entry.text;
+      var maxLabelW = contentW - indent - 34;
+      var lines = doc.splitTextToSize(label, maxLabelW);
+      var firstLine = lines[0];
+      doc.text(firstLine, margin + indent, tocY);
+      var labelW = doc.getTextWidth(firstLine);
+      var pageStr = String(entry.page);
+      var pageStrW = doc.getTextWidth(pageStr);
+      var dotsX0 = margin + indent + labelW + 4;
+      var dotsX1 = pageW - margin - pageStrW - 4;
+      if (dotsX1 > dotsX0){
+        doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(softInk[0],softInk[1],softInk[2]);
+        var dotUnit = doc.getTextWidth('. ');
+        var dotsCount = Math.max(0, Math.floor((dotsX1 - dotsX0) / dotUnit));
+        doc.text(new Array(dotsCount+1).join('. '), dotsX0, tocY);
+      }
+      doc.setFont('helvetica', entry.bold ? 'bold' : 'normal');
+      doc.setTextColor(entry.bold ? navy[0] : ink[0], entry.bold ? navy[1] : ink[1], entry.bold ? navy[2] : ink[2]);
+      doc.text(pageStr, pageW - margin, tocY, { align: 'right' });
+      tocY += 15;
+      for (var li=1; li<lines.length; li++){ doc.text(lines[li], margin+indent, tocY); tocY += 15; }
+    });
+
+    footerHeader(jobName);
+    var fileSafeName = jobName.replace(/[^a-z0-9\-]+/gi,'_').replace(/^_+|_+$/g,'') || 'Job';
+    var filename = 'VP-OAM_' + fileSafeName + '.pdf';
+    var jobId = state.activeId;
+
+    (async function(){
+      var baseBytes = doc.output('arraybuffer');
+      var finalBytes = baseBytes;
+      var mergeFailures = [];
+
+      if (embedPlan.length && window.PDFLib){
+        try{
+          toast('Assembling attached documents…');
+          var merged = await window.PDFLib.PDFDocument.load(baseBytes);
+          // process from the last anchor to the first so earlier insert points stay valid
+          var plan = embedPlan.slice().sort(function(a,b){ return b.anchorPage - a.anchorPage; });
+          for (var p = 0; p < plan.length; p++){
+            var entry = plan[p];
+            var insertAt = entry.anchorPage; // 0-based index right after the (1-based) anchor page
+            for (var fIdx = 0; fIdx < entry.files.length; fIdx++){
+              var f = entry.files[fIdx];
+              try{
+                var base64 = await readFileChunked(jobId, f.id, f);
+                var binary = atob(base64);
+                var bytes = new Uint8Array(binary.length);
+                for (var bi=0; bi<binary.length; bi++) bytes[bi] = binary.charCodeAt(bi);
+                if (f.kind === 'pdf'){
+                  var srcDoc = await window.PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+                  if (srcDoc.isEncrypted && window.pdfjsLib){
+                    // pdf-lib can't decrypt real encrypted PDFs — ignoreEncryption only skips the
+                    // error, it still copies the still-scrambled content stream, which is why some
+                    // certificates rendered as a blank/corrupt page. Rasterize with pdf.js instead
+                    // (which CAN decrypt for rendering) and embed each page as a flattened image.
+                    var pdfjsTask = window.pdfjsLib.getDocument({ data: bytes });
+                    var pdfjsDoc = await pdfjsTask.promise;
+                    for (var pnum = 1; pnum <= pdfjsDoc.numPages; pnum++){
+                      var pjsPage = await pdfjsDoc.getPage(pnum);
+                      var viewport = pjsPage.getViewport({ scale: 2 });
+                      var canvas = document.createElement('canvas');
+                      canvas.width = Math.ceil(viewport.width);
+                      canvas.height = Math.ceil(viewport.height);
+                      var ctx = canvas.getContext('2d');
+                      await pjsPage.render({ canvasContext: ctx, viewport: viewport }).promise;
+                      var pngDataUrl = canvas.toDataURL('image/png');
+                      var pngBinary = atob(pngDataUrl.split(',')[1]);
+                      var pngBytes = new Uint8Array(pngBinary.length);
+                      for (var pbi=0; pbi<pngBinary.length; pbi++) pngBytes[pbi] = pngBinary.charCodeAt(pbi);
+                      var rimg = await merged.embedPng(pngBytes);
+                      var rPageA4 = [595.28, 841.89];
+                      var rScale = Math.min((rPageA4[0]-36)/rimg.width, (rPageA4[1]-36)/rimg.height, 1);
+                      var rDrawW = rimg.width*rScale, rDrawH = rimg.height*rScale;
+                      var rNewPage = merged.insertPage(insertAt, rPageA4);
+                      rNewPage.drawImage(rimg, { x:(rPageA4[0]-rDrawW)/2, y:(rPageA4[1]-rDrawH)/2, width: rDrawW, height: rDrawH });
+                      insertAt++;
+                    }
+                  } else {
+                    var copied = await merged.copyPages(srcDoc, srcDoc.getPageIndices());
+                    for (var cp = 0; cp < copied.length; cp++){
+                      merged.insertPage(insertAt, copied[cp]);
+                      insertAt++;
+                    }
+                  }
+                } else {
+                  var img = (f.kind === 'png') ? await merged.embedPng(bytes) : await merged.embedJpg(bytes);
+                  var imgW = img.width, imgH = img.height;
+                  var pageA4 = [595.28, 841.89];
+                  var scale = Math.min((pageA4[0]-72)/imgW, (pageA4[1]-72)/imgH, 1);
+                  var drawW = imgW*scale, drawH = imgH*scale;
+                  var page = merged.insertPage(insertAt, pageA4);
+                  page.drawImage(img, { x:(pageA4[0]-drawW)/2, y:(pageA4[1]-drawH)/2, width: drawW, height: drawH });
+                  insertAt++;
+                }
+              }catch(fileErr){
+                mergeFailures.push(f.filename);
+              }
+            }
+          }
+          finalBytes = await merged.save();
+        }catch(mergeErr){
+          mergeFailures.push('(assembly error — exported with the summary pages only)');
+        }
+      }
+
+      var blob = new Blob([finalBytes], { type: 'application/pdf' });
+      browserDownloadBlob(filename, blob);
+      toast(mergeFailures.length ? ('Exported with issues: ' + mergeFailures.join(', ')) : ('Manual exported: ' + filename));
+    })();
+  }
+
+  /* ---------------- wiring: top-level ---------------- */
+  function openSidebar(){
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarBackdrop').classList.add('show');
+  }
+  function closeSidebar(){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarBackdrop').classList.remove('show');
+  }
+  var toggleBtn = document.getElementById('sidebarToggle');
+  if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+  var backdropEl = document.getElementById('sidebarBackdrop');
+  if (backdropEl) backdropEl.addEventListener('click', closeSidebar);
+
+  document.getElementById('newJobBtn').addEventListener('click', function(){ createJob(); closeSidebar(); });
+  document.getElementById('deleteJobBtn').addEventListener('click', confirmDeleteJob);
+  document.getElementById('saveBtn').addEventListener('click', function(){
+    if (!state.activeId){ toast('Select a job first'); return; }
+    saveNow(state.activeId);
+  });
+  document.getElementById('exportBtn').addEventListener('click', exportPdf);
+  document.getElementById('previewBtn').addEventListener('click', function(){
+    var job = state.jobs[state.activeId];
+    if (!job){ toast('Select a job first'); return; }
+    openPreviewModal(job);
+  });
+
+  /* ---------------- db bootstrap ---------------- */
+  function attachJobsListener(){
+    syncConfirmed = false;
+    if (unsubJobs) { try{ unsubJobs(); }catch(e){} unsubJobs = null; }
+    try{
+      attachJobsListenerInner();
+    }catch(e){
+      // onSnapshot threw synchronously instead of going through the error callback —
+      // still fall back rather than leaving the sidebar on the empty placeholder.
+      fallBackToLocal();
+    }
+  }
+
+  function fallBackToLocal(){
+    if (syncConfirmed) return;
+    loadLocal();
+    if (!state.activeId && state.order.length) state.activeId = state.order[0];
+    renderJobList();
+    renderJobDetail();
+    setSyncStatus('stuck');
+  }
+
+  function attachJobsListenerInner(){
+    unsubJobs = db.collection('jobs').onSnapshot(function(snap){
+      syncConfirmed = true; // any delivery at all means the sidebar will actually render below
+      var incomingIds = {};
+      snap.docs.forEach(function(d){
+        incomingIds[d.id] = true;
+        // This job has an edit on THIS tab that hasn't been written yet (still inside the
+        // debounce window, or its targeted update is in flight). The incoming snapshot is
+        // now stale relative to what's on screen — applying it would overwrite exactly the
+        // change the user is mid-typing. Skip it; the pending save will bring the server up
+        // to date in a moment, and the NEXT snapshot after that reflects it correctly.
+        if (saveTimers[d.id] || pendingChanges[d.id]) return;
+        var data = d.data();
+        if (!data) return;
+        // normalize shape defensively
+        data.builder = data.builder || { name:'',address:'',phone:'',fax:'',email:'' };
+        data.equipment = data.equipment || [];
+        data.sections = data.sections || {};
+        APPENDICES.forEach(function(a){
+          if (!data.sections[a.key]) data.sections[a.key] = { status:'pending', notes:'', links:[] };
+          if (!data.sections[a.key].links) data.sections[a.key].links = [];
+        });
+        state.jobs[d.id] = data;
+        if (state.order.indexOf(d.id) === -1) state.order.push(d.id);
+      });
+      // Remove jobs that no longer exist server-side — but ONLY once we're sure this
+      // snapshot is the real, complete picture. The first delivery after a page load
+      // (or any delivery during a connectivity gap) can be `fromCache`: an incomplete
+      // or stale local view, not a confirmed "these are the only jobs left". Treating
+      // that as truth is exactly how a job manual could flash empty or vanish from the
+      // list even though it was never touched on the server — a definitive snapshot
+      // always follows, so we just wait for it before deleting anything from view.
+      if (!snap.metadata.fromCache){
+        state.order = state.order.filter(function(id){ return incomingIds[id]; });
+        Object.keys(state.jobs).forEach(function(id){
+          if (!incomingIds[id]) delete state.jobs[id];
+        });
+      }
+      // sort by updatedAt desc
+      state.order.sort(function(a,b){
+        var ja = state.jobs[a], jb = state.jobs[b];
+        return new Date(jb.updatedAt||0) - new Date(ja.updatedAt||0);
+      });
+      var prevActive = state.activeId;
+      if (!state.activeId && state.order.length) state.activeId = state.order[0];
+      if (state.activeId && !state.jobs[state.activeId]) state.activeId = state.order.length ? state.order[0] : null;
+      if (state.activeId && state.activeId !== prevActive) refreshFiles(state.activeId);
+      renderJobList();
+      // Skip rebuilding the open job's form while it has an edit still in flight — even
+      // though the data above wasn't touched, tearing down and rebuilding the inputs mid-type
+      // loses focus and caret position for no reason.
+      if (!state.activeId || !(saveTimers[state.activeId] || pendingChanges[state.activeId])){
+        renderJobDetail();
+      }
+      setSyncStatus('live');
+    }, function(err){
+      // The live subscription died (or never connected) — this is exactly the state that
+      // left the sidebar showing nothing but the static "Jobs" placeholder: renderJobList()
+      // had never run yet, because until now it only ran from inside a successful snapshot.
+      // Fall back to whatever this browser has saved locally and actually render it, instead
+      // of leaving the screen blank with no explanation. Uses the persistent footer message
+      // (with a Retry button) rather than a toast, since a toast disappears in ~2s and is
+      // easy to miss if you're not looking right at that moment.
+      fallBackToLocal();
+    });
+    // Safety net: if the subscription neither delivers a snapshot nor reports an error
+    // within a few seconds (a hung connection), don't leave the sidebar sitting on the
+    // static placeholder indefinitely — fall back to the local copy and say so.
+    setTimeout(fallBackToLocal, 4000);
+  }
+
+  async function boot(){
+    setSyncStatus('connecting');
+    // This build talks directly to our own Firebase project instead of the Claude Artifact
+    // "db" bridge — that's the whole point of moving here: Firestore's real connection
+    // doesn't depend on the Claude artifact runtime being up, so the "Connecting… forever"
+    // problem that motivated this move shouldn't recur. sampleCap (Claude's image-scan
+    // capability) simply doesn't exist outside a Claude Artifact, so it stays null — the
+    // WSD image-scan button won't offer itself, and the fallback copy already tells people
+    // to send the WSD PDF to Claude in chat instead, which still works fine.
+    try{
+      if (!window.firebase){ throw new Error('Firebase SDK did not load'); }
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore(app);
+    }catch(e){ db = null; }
+
+    if (db){
+      attachJobsListener();
+    } else {
+      loadLocal();
+      setSyncStatus('local');
+      if (!state.order.length){
+        // no seed jobs — genuinely empty until the user creates one
+      } else {
+        if (!state.activeId) state.activeId = state.order[0];
+      }
+      renderJobList();
+      renderJobDetail();
+    }
+  }
+
+  boot();
+})();
+</script>
