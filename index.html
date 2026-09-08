@@ -866,6 +866,15 @@
   var unsubActive = null;
   var saveTimers = {};
   var pendingChanges = {}; // jobId -> {dotted.path: value} queued for the next targeted save
+  // jobId -> true while that job's debounced write is actually in flight to Firestore.
+  // pendingChanges[id] is cleared the instant the write STARTS (see autoSaveJob), not when
+  // it finishes — so there's a real gap, while waiting on the network, where neither
+  // saveTimers[id] nor pendingChanges[id] is set. Firestore's own local echo of that write
+  // can deliver a snapshot inside that exact gap, and without this flag the onSnapshot
+  // handler below would treat it as "nothing in flight" and rebuild the whole form —
+  // ripping focus out of whichever field the user had already moved on to typing in. This
+  // is what made typing into the Equipment Schedule feel like it "kept going away".
+  var saveInFlight = {};
 
   /* ---------------- file download (plain browser, no Claude "downloads" capability here) ---------------- */
   function browserDownloadBlob(filename, blob){
@@ -2001,14 +2010,20 @@
     if (db){
       var changes = pendingChanges[id];
       pendingChanges[id] = null;
+      // Mark this job's write as in flight for the whole round trip, not just while it sits
+      // in pendingChanges — see the comment on saveInFlight above for why that gap matters.
+      saveInFlight[id] = true;
+      var clearFlight = function(){ delete saveInFlight[id]; };
       if (changes && Object.keys(changes).length){
         changes.updatedAt = job.updatedAt;
-        return db.collection('jobs').doc(id).update(changes).catch(function(err){
+        return db.collection('jobs').doc(id).update(changes).then(clearFlight, function(err){
+          clearFlight();
           toast('Could not save — ' + (err && err.message ? err.message : 'try again'));
           throw err;
         });
       }
-      return db.collection('jobs').doc(id).set(job).catch(function(err){
+      return db.collection('jobs').doc(id).set(job).then(clearFlight, function(err){
+        clearFlight();
         toast('Could not save — ' + (err && err.message ? err.message : 'try again'));
         throw err;
       });
@@ -2039,11 +2054,13 @@
     clearTimeout(saveTimers[id]);
     delete saveTimers[id];
     pendingChanges[id] = null; // the full save below covers whatever was pending
+    saveInFlight[id] = true; // same in-flight gap as autoSaveJob — see comment on saveInFlight above
     var btn = document.getElementById('saveBtn');
     if (btn) btn.disabled = true;
     return saveJob(id).then(function(){
       toast('Saved');
     }).catch(function(){ /* saveJob already toasted the failure */ }).then(function(){
+      delete saveInFlight[id];
       if (btn) btn.disabled = false;
     });
   }
@@ -2823,7 +2840,7 @@
         // now stale relative to what's on screen — applying it would overwrite exactly the
         // change the user is mid-typing. Skip it; the pending save will bring the server up
         // to date in a moment, and the NEXT snapshot after that reflects it correctly.
-        if (saveTimers[d.id] || pendingChanges[d.id]) return;
+        if (saveTimers[d.id] || pendingChanges[d.id] || saveInFlight[d.id]) return;
         var data = d.data();
         if (!data) return;
         // normalize shape defensively
@@ -2863,7 +2880,7 @@
       // Skip rebuilding the open job's form while it has an edit still in flight — even
       // though the data above wasn't touched, tearing down and rebuilding the inputs mid-type
       // loses focus and caret position for no reason.
-      if (!state.activeId || !(saveTimers[state.activeId] || pendingChanges[state.activeId])){
+      if (!state.activeId || !(saveTimers[state.activeId] || pendingChanges[state.activeId] || saveInFlight[state.activeId])){
         renderJobDetail();
       }
       setSyncStatus('live');
