@@ -427,10 +427,6 @@
   .lib-add input,.lib-add select,.lib-search,.lib-edit-row input,.lib-edit-row select{padding:8px 10px;border:1px solid #dfe4ec;border-radius:8px;font:inherit;font-size:13px;min-width:0;}
   .lib-add-actions{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
   .lib-group{margin-top:18px;}
-  .lib-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 10px;}
-  .lib-tab{font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid #dfe4ec;background:#fff;color:#333b47;cursor:pointer;}
-  .lib-tab:hover{background:#eef3ff;}
-  .lib-tab.active{background:#0b4fd4;border-color:#0b4fd4;color:#fff;}
   .lib-group-title{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6b7688;margin-bottom:6px;}
   .lib-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #dfe4ec;font-size:13px;}
   .lib-row-main{flex:1;min-width:0;}
@@ -799,7 +795,7 @@
     var q = libNorm((ov.querySelector('.lib-search') || {}).value || '');
     var editing = state.libEditing;
     var kindOpts = LIB_KINDS.map(function(k){ return '<option value="' + k.key + '">' + k.label + '</option>'; }).join('');
-    var groups = LIB_KINDS.filter(function(k){ return state.libFilter === 'all' || state.libFilter === k.key; }).map(function(k){
+    var groups = LIB_KINDS.filter(function(k){ return state.libFilter === k.key; }).map(function(k){
       var rows = state.library.filter(function(e){
         if (e.kind !== k.key) return false;
         return !q || libNorm([e.manufacturer, e.model, e.title, e.filename].join(' ')).indexOf(q) !== -1;
@@ -837,14 +833,10 @@
           '<button type="button" class="btn" id="libImportBtn">Import from existing manuals</button>' +
           '<span class="lib-row-meta">Copies the technical data, operating manuals and warranties already uploaded in your saved manuals into the library. Nothing in the manuals is changed or removed.</span>' +
         '</div>' +
-        '<div class="lib-tabs">' + [{key:'all',label:'All'}].concat(LIB_KINDS).map(function(k){
-          var n = k.key === 'all' ? state.library.length : state.library.filter(function(e){ return e.kind === k.key; }).length;
-          return '<button type="button" class="lib-tab' + (state.libFilter === k.key ? ' active' : '') + '" data-lib-filter="' + k.key + '">' + k.label + ' (' + n + ')</button>';
-        }).join('') + '</div>' +
         '<input class="lib-search" placeholder="Search brand, model or file name" style="width:100%;" />' +
         (state.libraryLoaded ? groups : '<div class="lib-empty">Loading library…</div>') +
       '</div></div>';
-    if (state.libFilter !== 'all') ov.querySelector('#libAddKind').value = state.libFilter; else if (keep.kind) ov.querySelector('#libAddKind').value = keep.kind;
+    ov.querySelector('#libAddKind').value = state.libFilter;
     ov.querySelector('#libAddMf').value = keep.mf || ''; ov.querySelector('#libAddModel').value = keep.mo || '';
     var srch = ov.querySelector('.lib-search'); srch.value = keep.q || '';
     wireLibraryOverlay(ov);
@@ -888,11 +880,7 @@
       toast(added + ' added to the library' + (skipped.length ? ' — skipped: ' + skipped.join(', ') : ''));
       loadLibrary();
     });
-    ov.querySelectorAll('[data-lib-filter]').forEach(function(b){ b.addEventListener('click', function(){
-      state.libFilter = b.getAttribute('data-lib-filter');
-      if (state.libFilter !== 'all') ov.querySelector('#libAddKind').value = state.libFilter;
-      renderLibraryOverlay();
-    }); });
+    ov.querySelector('#libAddKind').addEventListener('change', function(){ state.libFilter = this.value; renderLibraryOverlay(); });
     ov.querySelector('#libImportBtn').addEventListener('click', async function(){
       var btn = this; if (btn.disabled) return; btn.disabled = true;
       function withTimeout(p, ms, what){
@@ -1176,7 +1164,7 @@
     order: [],      // ids in list order
     activeId: null,
     openSections: { contact:true, equipment:true, technicalData:false, operatingManuals:false, warranty:false, certificates:false, drawings:false },
-    library: [], libraryLoaded: false, libEditing: null, libFilter: 'all',
+    library: [], libraryLoaded: false, libEditing: null, libFilter: 'techData',
     filesByJob: {},  // jobId -> { certificates: [...], drawings: [...] }
     wsdScan: null    // { sourceName, status: 'scanning'|'done'|'error', candidates: [...], error }
   };
