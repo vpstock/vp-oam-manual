@@ -414,6 +414,29 @@
     .content{padding:20px 16px 80px;}
     .topbar{padding:14px 16px;flex-wrap:wrap;}
   }
+  /* ---- shared library ---- */
+  .lib-open-btn{display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-strong,#dfe4ec);background:#fff;color:var(--accent,#0b4fd4);font:600 13px/1 inherit;font-family:inherit;cursor:pointer;}
+  .lib-open-btn:hover{background:#eef3ff;}
+  .lib-overlay{position:fixed;inset:0;background:rgba(10,26,77,.45);z-index:900;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;}
+  .lib-panel{background:#fff;border-radius:8px;width:100%;max-width:860px;box-shadow:0 8px 32px rgba(10,26,77,.25);}
+  .lib-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #dfe4ec;}
+  .lib-head h2{font-family:Newsreader,Georgia,serif;font-weight:500;font-size:22px;color:#0a1a4d;margin:0;}
+  .lib-body{padding:18px 22px 22px;}
+  .lib-sub{color:#6b7688;font-size:13px;margin:0 0 14px;}
+  .lib-add{display:grid;grid-template-columns:150px 1fr 1fr;gap:8px;margin-bottom:8px;}
+  .lib-add input,.lib-add select,.lib-search,.lib-edit-row input,.lib-edit-row select{padding:8px 10px;border:1px solid #dfe4ec;border-radius:8px;font:inherit;font-size:13px;min-width:0;}
+  .lib-add-actions{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .lib-group{margin-top:18px;}
+  .lib-group-title{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6b7688;margin-bottom:6px;}
+  .lib-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #dfe4ec;font-size:13px;}
+  .lib-row-main{flex:1;min-width:0;}
+  .lib-row-name{font-weight:600;color:#14181e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lib-row-meta{color:#6b7688;font-size:12px;}
+  .lib-match{display:inline-block;background:#eef3ff;color:#0b4fd4;border-radius:8px;padding:1px 8px;font-size:11px;font-weight:600;margin-left:6px;}
+  .lib-edit-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;padding:8px 0;}
+  .lib-empty{color:#6b7688;font-size:13px;padding:10px 0;}
+  .lib-pick{max-height:230px;overflow:auto;border:1px solid #dfe4ec;border-radius:8px;padding:0 12px;margin:6px 0 4px;}
+  @media (max-width:640px){.lib-add{grid-template-columns:1fr;}.lib-edit-row{grid-template-columns:1fr;}}
 </style>
 
 <div class="shell">
@@ -436,6 +459,10 @@
       <button class="new-job-btn" id="newJobBtn">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1V13M1 7H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         New job manual
+      </button>
+      <button class="lib-open-btn" id="libOpenBtn" type="button">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2.5H5.5V11.5H2zM6.5 2.5H10V11.5H6.5zM11 3L13 11" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        Document library
       </button>
     </div>
     <div class="job-list" id="jobList">
@@ -641,6 +668,249 @@
       '<div style="margin-bottom:10px;">' + chips + '</div>';
   }
 
+
+  /* -------- shared document library (tech data, operating manuals, warranties) --------
+     Files are kept online in the same Firestore project as the job manuals, under the
+     reserved id "_library" (jobs/_library/files), so the existing database rules already
+     cover them. Metadata lives on the main doc; the bytes are always in chunk docs so
+     listing the library stays light. */
+  var LIB_JOB = '_library';
+  var LIB_KINDS = [
+    { key:'techData', label:'Technical data', section:'technicalData' },
+    { key:'manual',   label:'Operating manuals', section:'operatingManuals' },
+    { key:'warranty', label:'Warranties', section:'warranty' }
+  ];
+  function libKindForSection(sectionKey){
+    for (var i=0;i<LIB_KINDS.length;i++){ if (LIB_KINDS[i].section === sectionKey) return LIB_KINDS[i].key; }
+    return null;
+  }
+  function libKindLabel(k){
+    for (var i=0;i<LIB_KINDS.length;i++){ if (LIB_KINDS[i].key === k) return LIB_KINDS[i].label; }
+    return k;
+  }
+  function libNorm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+  function loadLibrary(){
+    if (!db) return Promise.resolve();
+    return db.collection('jobs/' + LIB_JOB + '/files').get().then(function(snap){
+      state.library = snap.docs.map(function(d){
+        var x = d.data() || {};
+        return { id:d.id, kind:x.kind||'techData', manufacturer:x.manufacturer||'', model:x.model||'', title:x.title||'',
+                 filename:x.filename||'', mime:x.mime, size:x.size||0, chunkCount:x.chunkCount||0, addedAt:x.addedAt||'' };
+      }).sort(function(a,b){ return (a.manufacturer+a.model+a.filename).toLowerCase() < (b.manufacturer+b.model+b.filename).toLowerCase() ? -1 : 1; });
+      state.libraryLoaded = true;
+      if (document.getElementById('libOverlay')) renderLibraryOverlay();
+      if (state.activeId) renderJobDetail();
+    }).catch(function(err){
+      state.libraryLoaded = true;
+      toast('Library could not load — ' + (err && err.message ? err.message : 'check the connection'));
+    });
+  }
+
+  /* Add a file to the library (always chunked). Skips exact duplicates (same kind, name and size). */
+  async function addToLibrary(kind, tags, filename, mime, size, base64){
+    var dup = state.library.some(function(e){ return e.kind === kind && e.filename === filename && e.size === size; });
+    if (dup) return { duplicate:true };
+    var ref = filesCollection(LIB_JOB).doc();
+    var chunkCount = Math.max(1, Math.ceil(base64.length / FILE_CHUNK_CHARS));
+    await ref.set({ kind:kind, manufacturer:(tags.manufacturer||'').trim(), model:(tags.model||'').trim(), title:(tags.title||'').trim(),
+                    filename:filename, mime:mime || 'application/octet-stream', size:size, chunkCount:chunkCount, addedAt:nowIso() });
+    for (var i=0;i<chunkCount;i++){
+      await ref.collection('chunks').doc(String(i)).set({ data: base64.slice(i*FILE_CHUNK_CHARS, (i+1)*FILE_CHUNK_CHARS) });
+    }
+    return { id:ref.id };
+  }
+
+  /* Best-effort tags for an upload made inside a job: match the file name against the job's equipment. */
+  function guessLibraryTags(job, filename){
+    var f = libNorm(filename), best = null;
+    ((job && job.equipment) || []).forEach(function(r){
+      var m = libNorm(r.model);
+      if (m && m.length >= 3 && f.indexOf(m) !== -1){ best = r; }
+    });
+    if (!best){
+      ((job && job.equipment) || []).forEach(function(r){
+        var mf = libNorm(r.manufacturer);
+        if (!best && mf && mf.length >= 3 && f.indexOf(mf) !== -1) best = { manufacturer:r.manufacturer, model:'' };
+      });
+    }
+    return best ? { manufacturer: best.manufacturer || '', model: best.model || '' } : { manufacturer:'', model:'' };
+  }
+
+  function libMatchesJob(entry, job){
+    var em = libNorm(entry.model), emf = libNorm(entry.manufacturer), hit = '';
+    ((job && job.equipment) || []).forEach(function(r){
+      var m = libNorm(r.model), mf = libNorm(r.manufacturer);
+      if (em && m && (m.indexOf(em) !== -1 || em.indexOf(m) !== -1)) hit = r.model;
+      else if (!hit && !em && emf && mf && (mf.indexOf(emf) !== -1 || emf.indexOf(mf) !== -1)) hit = r.manufacturer;
+    });
+    return hit;
+  }
+
+  function libRowHtml(e, actionsHtml, matchLabel){
+    var tags = [e.manufacturer, e.model].filter(Boolean).join(' · ');
+    return '<div class="lib-row" data-lib-id="' + e.id + '">' +
+      '<div class="lib-row-main">' +
+        '<div class="lib-row-name">' + escapeHtml(e.title || e.filename) +
+          (matchLabel ? '<span class="lib-match">Matches ' + escapeHtml(matchLabel) + '</span>' : '') + '</div>' +
+        '<div class="lib-row-meta">' + escapeHtml(tags || 'No brand or model set') + ' · ' + escapeHtml(e.filename) + ' · ' + formatBytes(e.size||0) + '</div>' +
+      '</div>' + actionsHtml + '</div>';
+  }
+
+  /* The "From the library" panel inside a job's Technical data / Operating manuals / Warranty section. */
+  function libraryPickerPanel(job, sectionKey){
+    var kind = libKindForSection(sectionKey);
+    if (!kind) return '';
+    if (!db) return '';
+    var items = state.library.filter(function(e){ return e.kind === kind; });
+    var withMatch = items.map(function(e){ return { e:e, m: libMatchesJob(e, job) }; });
+    withMatch.sort(function(a,b){ return (b.m?1:0) - (a.m?1:0); });
+    var body;
+    if (!state.libraryLoaded) body = '<div class="lib-empty">Loading library…</div>';
+    else if (!items.length) body = '<div class="lib-empty">Nothing in the library for this section yet. Anything you upload below is saved to it, or add files from Document library in the sidebar.</div>';
+    else body = '<div class="lib-pick">' + withMatch.map(function(x){
+      return libRowHtml(x.e, '<button type="button" class="btn" data-lib-use="' + x.e.id + '" data-lib-section="' + sectionKey + '">Add to this manual</button>', x.m);
+    }).join('') + '</div>';
+    return '<div class="divider-label">From the library</div>' + body;
+  }
+
+  async function copyLibraryFileToJob(libId, sectionKey, jobId){
+    var e = state.library.find(function(x){ return x.id === libId; });
+    if (!e) return;
+    var existing = ((state.filesByJob[jobId] || {})[sectionKey]) || [];
+    if (existing.some(function(f){ return f.filename === e.filename && f.size === e.size; })){ toast(e.filename + ' is already in this manual'); return; }
+    toast('Adding ' + e.filename + '…');
+    try{
+      var base64 = await readFileChunked(LIB_JOB, e.id, e);
+      await writeFileChunked(jobId, { filename:e.filename, mime:e.mime || 'application/octet-stream', size:e.size, section:sectionKey, uploadedAt:nowIso(), fromLibrary:e.id }, base64);
+      toast(e.filename + ' added from the library');
+      refreshFiles(jobId);
+    }catch(err){ toast('Could not add it — ' + (err && err.message ? err.message : 'try again')); }
+  }
+
+  /* ---- library overlay (browse, add, edit tags, delete) ---- */
+  function renderLibraryOverlay(){
+    var ov = document.getElementById('libOverlay');
+    if (!ov) return;
+    var q = libNorm((ov.querySelector('.lib-search') || {}).value || '');
+    var editing = state.libEditing;
+    var kindOpts = LIB_KINDS.map(function(k){ return '<option value="' + k.key + '">' + k.label + '</option>'; }).join('');
+    var groups = LIB_KINDS.map(function(k){
+      var rows = state.library.filter(function(e){
+        if (e.kind !== k.key) return false;
+        return !q || libNorm([e.manufacturer, e.model, e.title, e.filename].join(' ')).indexOf(q) !== -1;
+      });
+      var html = rows.length ? rows.map(function(e){
+        if (editing === e.id){
+          return '<div class="lib-edit-row" data-lib-id="' + e.id + '">' +
+            '<input data-edit="manufacturer" placeholder="Brand, e.g. Daikin" value="' + escapeHtml(e.manufacturer) + '" />' +
+            '<input data-edit="model" placeholder="Model" value="' + escapeHtml(e.model) + '" />' +
+            '<input data-edit="title" placeholder="Title (optional)" value="' + escapeHtml(e.title) + '" />' +
+            '<span><button type="button" class="btn btn-primary" data-lib-save="' + e.id + '">Save</button> <button type="button" class="btn" data-lib-cancel="1">Cancel</button></span></div>';
+        }
+        return libRowHtml(e,
+          '<button type="button" class="btn" data-lib-dl="' + e.id + '">Download</button>' +
+          '<button type="button" class="btn" data-lib-edit="' + e.id + '">Edit details</button>' +
+          '<button type="button" class="btn btn-danger-ghost" data-lib-del="' + e.id + '">Delete</button>');
+      }).join('') : '<div class="lib-empty">' + (q ? 'No matches.' : 'Nothing here yet.') + '</div>';
+      return '<div class="lib-group"><div class="lib-group-title">' + k.label + ' (' + rows.length + ')</div>' + html + '</div>';
+    }).join('');
+    var keep = { kind:(ov.querySelector('#libAddKind')||{}).value, mf:(ov.querySelector('#libAddMf')||{}).value, mo:(ov.querySelector('#libAddModel')||{}).value, q:(ov.querySelector('.lib-search')||{}).value };
+    ov.innerHTML = '<div class="lib-panel">' +
+      '<div class="lib-head"><h2>Document library</h2><button type="button" class="btn" id="libClose">Close</button></div>' +
+      '<div class="lib-body">' +
+        '<p class="lib-sub">Technical data, operating manuals and warranties are kept online here so you can add them to any manual. Uploads made inside a manual are saved here too.</p>' +
+        '<div class="lib-add">' +
+          '<select id="libAddKind">' + kindOpts + '</select>' +
+          '<input id="libAddMf" placeholder="Brand, e.g. Daikin" />' +
+          '<input id="libAddModel" placeholder="Model, e.g. FXSQ25" />' +
+        '</div>' +
+        '<div class="lib-add-actions">' +
+          '<label class="btn btn-primary" style="cursor:pointer;">Add files to library<input type="file" id="libFileInput" multiple style="display:none;" /></label>' +
+          '<span class="lib-row-meta">Up to ' + formatBytes(MAX_FILE_BYTES) + ' per file. Brand and model are applied to every file you pick.</span>' +
+        '</div>' +
+        '<input class="lib-search" placeholder="Search brand, model or file name" style="width:100%;" />' +
+        (state.libraryLoaded ? groups : '<div class="lib-empty">Loading library…</div>') +
+      '</div></div>';
+    if (keep.kind) ov.querySelector('#libAddKind').value = keep.kind;
+    ov.querySelector('#libAddMf').value = keep.mf || ''; ov.querySelector('#libAddModel').value = keep.mo || '';
+    var srch = ov.querySelector('.lib-search'); srch.value = keep.q || '';
+    wireLibraryOverlay(ov);
+  }
+
+  function closeLibraryOverlay(){
+    var ov = document.getElementById('libOverlay'); if (ov) ov.parentNode.removeChild(ov);
+    state.libEditing = null;
+  }
+
+  function openLibraryOverlay(){
+    if (!db){ toast('The library needs the online connection, which isn\'t available right now.'); return; }
+    if (document.getElementById('libOverlay')) return;
+    var ov = document.createElement('div'); ov.className = 'lib-overlay'; ov.id = 'libOverlay';
+    document.body.appendChild(ov);
+    ov.addEventListener('mousedown', function(e){ if (e.target === ov) closeLibraryOverlay(); });
+    renderLibraryOverlay();
+    loadLibrary();
+  }
+
+  function wireLibraryOverlay(ov){
+    ov.querySelector('#libClose').addEventListener('click', closeLibraryOverlay);
+    var srch = ov.querySelector('.lib-search');
+    srch.addEventListener('input', function(){ var v = srch.value; renderLibraryOverlay(); var s2 = ov.querySelector('.lib-search'); s2.focus(); s2.setSelectionRange(v.length, v.length); });
+    ov.querySelector('#libFileInput').addEventListener('change', async function(ev){
+      var files = Array.prototype.slice.call(ev.target.files || []); ev.target.value = '';
+      if (!files.length) return;
+      var kind = ov.querySelector('#libAddKind').value;
+      var tags = { manufacturer: ov.querySelector('#libAddMf').value, model: ov.querySelector('#libAddModel').value };
+      var added = 0, skipped = [];
+      for (var i=0;i<files.length;i++){
+        var f = files[i];
+        if (f.size > MAX_FILE_BYTES){ skipped.push(f.name + ' (too large)'); continue; }
+        toast('Uploading ' + f.name + '…');
+        try{
+          var b64 = await readAsBase64(f);
+          var r = await addToLibrary(kind, tags, f.name, f.type, f.size, b64);
+          if (r.duplicate) skipped.push(f.name + ' (already in library)'); else added++;
+        }catch(err){ skipped.push(f.name + ' (failed)'); }
+      }
+      toast(added + ' added to the library' + (skipped.length ? ' — skipped: ' + skipped.join(', ') : ''));
+      loadLibrary();
+    });
+    ov.querySelectorAll('[data-lib-dl]').forEach(function(b){ b.addEventListener('click', async function(){
+      var e = state.library.find(function(x){ return x.id === b.getAttribute('data-lib-dl'); }); if (!e) return;
+      try{
+        toast('Fetching ' + e.filename + '…');
+        var base64 = await readFileChunked(LIB_JOB, e.id, e);
+        var bin = atob(base64), bytes = new Uint8Array(bin.length);
+        for (var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+        browserDownloadBlob(e.filename, new Blob([bytes], { type: e.mime || 'application/octet-stream' }));
+      }catch(err){ toast('Download failed — ' + (err && err.message ? err.message : 'try again')); }
+    }); });
+    ov.querySelectorAll('[data-lib-edit]').forEach(function(b){ b.addEventListener('click', function(){ state.libEditing = b.getAttribute('data-lib-edit'); renderLibraryOverlay(); }); });
+    ov.querySelectorAll('[data-lib-cancel]').forEach(function(b){ b.addEventListener('click', function(){ state.libEditing = null; renderLibraryOverlay(); }); });
+    ov.querySelectorAll('[data-lib-save]').forEach(function(b){ b.addEventListener('click', function(){
+      var id = b.getAttribute('data-lib-save'), row = ov.querySelector('.lib-edit-row[data-lib-id="' + id + '"]');
+      var patch = {}; row.querySelectorAll('[data-edit]').forEach(function(i){ patch[i.getAttribute('data-edit')] = cleanText(i.value.trim()); });
+      filesCollection(LIB_JOB).doc(id).update(patch).then(function(){ state.libEditing = null; toast('Details saved'); loadLibrary(); })
+        .catch(function(){ toast('Could not save the details'); });
+    }); });
+    ov.querySelectorAll('[data-lib-del]').forEach(function(b){ b.addEventListener('click', function(){
+      var id = b.getAttribute('data-lib-del'), e = state.library.find(function(x){ return x.id === id; }); if (!e) return;
+      openModal('Delete from the library?', e.filename + ' will be removed from the library for good. Copies already added to manuals are not affected.', function(){
+        deleteFileChunked(LIB_JOB, id, e.chunkCount).then(function(){ toast('Removed from the library'); loadLibrary(); }).catch(function(){ toast('Could not remove it'); });
+      });
+    }); });
+  }
+
+  function readAsBase64(file){
+    return new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ var res = r.result, c = res.indexOf(','); resolve(c !== -1 ? res.slice(c+1) : res); };
+      r.onerror = function(){ reject(new Error('could not read file')); };
+      r.readAsDataURL(file);
+    });
+  }
+
   /* -------- file attachments (actual documents, stored in full — all appendix sections) -------- */
   var MAX_FILE_BYTES = 8 * 1024 * 1024; // ~8MB raw file per attachment (chunked under the hood)
   var FILE_CHUNK_CHARS = 150000; // base64 chars per chunk — keeps each chunk doc safely under the 256KB db document cap
@@ -722,6 +992,7 @@
         'Upload file' +
         '<input type="file" data-file-upload="' + sectionKey + '" style="display:none;" />' +
       '</label>' +
+      (libKindForSection(sectionKey) ? '<label class="field-note" style="display:flex;align-items:center;gap:6px;margin-top:8px;"><input type="checkbox" data-save-lib="' + sectionKey + '" checked /> Also save to the document library for future manuals</label>' : '') +
       '<div class="field-note" style="margin-top:6px;">Uploaded here, the actual file (up to ~8MB) is stored in the manual — PDFs and images are merged in as real pages when you export, not just a link. Use "Linked files" below instead only if the source keeps changing and you want it to stay pointed at the live copy.</div>';
   }
 
@@ -852,6 +1123,7 @@
     order: [],      // ids in list order
     activeId: null,
     openSections: { contact:true, equipment:true, technicalData:false, operatingManuals:false, warranty:false, certificates:false, drawings:false },
+    library: [], libraryLoaded: false, libEditing: null,
     filesByJob: {},  // jobId -> { certificates: [...], drawings: [...] }
     wsdScan: null    // { sourceName, status: 'scanning'|'done'|'error', candidates: [...], error }
   };
@@ -1444,7 +1716,7 @@
     html += '' +
       '<div class="info-banner">' +
         '<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.8V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7.5" cy="4.6" r="0.9" fill="currentColor"/></svg>' +
-        '<div><b>Source documents:</b> Certificates and Drawings support direct upload for small files (under ~150KB). Warranty and Technical Data auto-insert from what\'s on file once you\'ve added the equipment schedule below. For the WSD schedule, larger drawing sets, or anything else, paste the file name or shared drive/Simpro link in the notes field. Everything entered here is compiled when you export.</div>' +
+        '<div><b>Source documents:</b> Files uploaded here are stored in the manual (up to ~8MB each). Technical data, operating manuals and warranties are also saved to the Document library so you can reuse them in later manuals. Warranty and Technical Data auto-insert from what\'s on file once you\'ve added the equipment schedule below. For the WSD schedule, larger drawing sets, or anything else, paste the file name or shared drive/Simpro link in the notes field. Everything entered here is compiled when you export.</div>' +
       '</div>';
 
     // Contact information section
@@ -1502,6 +1774,7 @@
       if (a.key === 'warranty') extra = warrantyLibraryPanel(job);
       else if (a.key === 'technicalData') extra = technicalDataLibraryPanel(job);
       var uploadExtra = db ? filesPanel(state.activeId, a.key) : uploadUnavailablePanel();
+      if (db && libKindForSection(a.key)) extra += libraryPickerPanel(job, a.key);
       var linksExtra = db ? linksPanel(job, a.key) : '';
       html += sectionShell(a.key, String(3+idx), a.label, a.sub, '' +
         '<div class="status-row">' + statusButtons(a.key, s.status) + '</div>' +
@@ -1855,12 +2128,28 @@
           }, base64).then(function(){
             toast(file.name + ' uploaded');
             refreshFiles(jobId);
+            var libKind = libKindForSection(sectionKey);
+            var cb = document.querySelector('[data-save-lib="' + sectionKey + '"]');
+            if (libKind && (!cb || cb.checked)){
+              addToLibrary(libKind, guessLibraryTags(state.jobs[jobId], file.name), file.name, file.type, file.size, base64).then(function(r){
+                if (r && r.duplicate) return;
+                toast(file.name + ' also saved to the library');
+                loadLibrary();
+              }).catch(function(){ toast('Uploaded to the manual, but could not be saved to the library'); });
+            }
           }).catch(function(err){
             toast('Upload failed — ' + (err && err.message ? err.message : 'try again'));
           });
         };
         reader.onerror = function(){ toast('Could not read that file'); };
         reader.readAsDataURL(file);
+      });
+    });
+
+    // add a library file to this manual
+    document.querySelectorAll('[data-lib-use]').forEach(function(el){
+      el.addEventListener('click', function(){
+        copyLibraryFileToJob(el.getAttribute('data-lib-use'), el.getAttribute('data-lib-section'), state.activeId);
       });
     });
 
@@ -2835,6 +3124,7 @@
   if (backdropEl) backdropEl.addEventListener('click', closeSidebar);
 
   document.getElementById('newJobBtn').addEventListener('click', function(){ createJob(); closeSidebar(); });
+  document.getElementById('libOpenBtn').addEventListener('click', function(){ openLibraryOverlay(); closeSidebar(); });
   document.getElementById('deleteJobBtn').addEventListener('click', confirmDeleteJob);
   document.getElementById('saveBtn').addEventListener('click', function(){
     if (!state.activeId){ toast('Select a job first'); return; }
@@ -2957,6 +3247,7 @@
 
     if (db){
       attachJobsListener();
+      loadLibrary();
     } else {
       loadLocal();
       setSyncStatus('local');
