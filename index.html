@@ -829,6 +829,10 @@
           '<label class="btn btn-primary" style="cursor:pointer;">Add files to library<input type="file" id="libFileInput" multiple style="display:none;" /></label>' +
           '<span class="lib-row-meta">Up to ' + formatBytes(MAX_FILE_BYTES) + ' per file. Brand and model are applied to every file you pick.</span>' +
         '</div>' +
+        '<div class="lib-add-actions" style="margin-top:4px;">' +
+          '<button type="button" class="btn" id="libImportBtn">Import from existing manuals</button>' +
+          '<span class="lib-row-meta">Copies the technical data, operating manuals and warranties already uploaded in your saved manuals into the library. Nothing in the manuals is changed or removed.</span>' +
+        '</div>' +
         '<input class="lib-search" placeholder="Search brand, model or file name" style="width:100%;" />' +
         (state.libraryLoaded ? groups : '<div class="lib-empty">Loading library…</div>') +
       '</div></div>';
@@ -874,6 +878,35 @@
         }catch(err){ skipped.push(f.name + ' (failed)'); }
       }
       toast(added + ' added to the library' + (skipped.length ? ' — skipped: ' + skipped.join(', ') : ''));
+      loadLibrary();
+    });
+    ov.querySelector('#libImportBtn').addEventListener('click', async function(){
+      var btn = this; if (btn.disabled) return; btn.disabled = true;
+      var jobIds = Object.keys(state.jobs || {}).filter(function(id){ return id !== LIB_JOB; });
+      var added = 0, already = 0, failed = 0;
+      try{
+        for (var j=0;j<jobIds.length;j++){
+          var jobId = jobIds[j], job = state.jobs[jobId];
+          btn.textContent = 'Importing… ' + (j+1) + ' of ' + jobIds.length;
+          var snap = await filesCollection(jobId).get();
+          for (var d=0; d<snap.docs.length; d++){
+            var doc = snap.docs[d], x = doc.data() || {};
+            var kind = libKindForSection(x.section);
+            if (!kind || !x.filename) continue;
+            try{
+              if (state.library.some(function(e){ return e.kind === kind && e.filename === x.filename && e.size === x.size; })){ already++; continue; }
+              var b64 = await readFileChunked(jobId, doc.id, x);
+              if (!b64){ failed++; continue; }
+              var r = await addToLibrary(kind, guessLibraryTags(job, x.filename), x.filename, x.mime, x.size, b64);
+              if (r && r.duplicate) already++; else { added++; state.library.push({ id:r.id, kind:kind, filename:x.filename, size:x.size, manufacturer:'', model:'', title:'', chunkCount:0 }); }
+            }catch(err){ failed++; }
+          }
+        }
+        toast('Import finished: ' + added + ' added, ' + already + ' already in the library' + (failed ? ', ' + failed + ' could not be copied' : ''));
+      }catch(err){
+        toast('Import stopped — ' + (err && err.message ? err.message : 'check the connection'));
+      }
+      btn.disabled = false; btn.textContent = 'Import from existing manuals';
       loadLibrary();
     });
     ov.querySelectorAll('[data-lib-dl]').forEach(function(b){ b.addEventListener('click', async function(){
