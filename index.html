@@ -992,7 +992,7 @@
         'Upload file' +
         '<input type="file" data-file-upload="' + sectionKey + '" style="display:none;" />' +
       '</label>' +
-      (libKindForSection(sectionKey) ? '<label class="field-note" style="display:flex;align-items:center;gap:6px;margin-top:8px;"><input type="checkbox" data-save-lib="' + sectionKey + '" checked /> Also save to the document library for future manuals</label>' : '') +
+      (libKindForSection(sectionKey) ? '<div class="field-note" style="margin-top:8px;">Files uploaded here are saved to the document library automatically, ready to reuse in future manuals.</div>' : '') +
       '<div class="field-note" style="margin-top:6px;">Uploaded here, the actual file (up to ~8MB) is stored in the manual — PDFs and images are merged in as real pages when you export, not just a link. Use "Linked files" below instead only if the source keeps changing and you want it to stay pointed at the live copy.</div>';
   }
 
@@ -2129,8 +2129,7 @@
             toast(file.name + ' uploaded');
             refreshFiles(jobId);
             var libKind = libKindForSection(sectionKey);
-            var cb = document.querySelector('[data-save-lib="' + sectionKey + '"]');
-            if (libKind && (!cb || cb.checked)){
+            if (libKind){
               addToLibrary(libKind, guessLibraryTags(state.jobs[jobId], file.name), file.name, file.type, file.size, base64).then(function(r){
                 if (r && r.duplicate) return;
                 toast(file.name + ' also saved to the library');
