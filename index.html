@@ -792,13 +792,15 @@
   function renderLibraryOverlay(){
     var ov = document.getElementById('libOverlay');
     if (!ov) return;
-    var q = libNorm((ov.querySelector('.lib-search') || {}).value || '');
+    var qb = libNorm((ov.querySelector('#libAddMf') || {}).value || ''), qm = libNorm((ov.querySelector('#libAddModel') || {}).value || '');
     var editing = state.libEditing;
     var kindOpts = LIB_KINDS.map(function(k){ return '<option value="' + k.key + '">' + k.label + '</option>'; }).join('');
     var groups = LIB_KINDS.filter(function(k){ return state.libFilter === k.key; }).map(function(k){
       var rows = state.library.filter(function(e){
         if (e.kind !== k.key) return false;
-        return !q || libNorm([e.manufacturer, e.model, e.title, e.filename].join(' ')).indexOf(q) !== -1;
+        if (qb && libNorm([e.manufacturer, e.title, e.filename].join(' ')).indexOf(qb) === -1) return false;
+        if (qm && libNorm([e.model, e.title, e.filename].join(' ')).indexOf(qm) === -1) return false;
+        return true;
       });
       var html = rows.length ? rows.map(function(e){
         if (editing === e.id){
@@ -812,10 +814,10 @@
           '<button type="button" class="btn" data-lib-dl="' + e.id + '">Download</button>' +
           '<button type="button" class="btn" data-lib-edit="' + e.id + '">Edit details</button>' +
           '<button type="button" class="btn btn-danger-ghost" data-lib-del="' + e.id + '">Delete</button>');
-      }).join('') : '<div class="lib-empty">' + (q ? 'No matches.' : 'Nothing here yet.') + '</div>';
+      }).join('') : '<div class="lib-empty">' + ((qb || qm) ? 'No matches.' : 'Nothing here yet.') + '</div>';
       return '<div class="lib-group"><div class="lib-group-title">' + k.label + ' (' + rows.length + ')</div>' + html + '</div>';
     }).join('');
-    var keep = { kind:(ov.querySelector('#libAddKind')||{}).value, mf:(ov.querySelector('#libAddMf')||{}).value, mo:(ov.querySelector('#libAddModel')||{}).value, q:(ov.querySelector('.lib-search')||{}).value };
+    var keep = { kind:(ov.querySelector('#libAddKind')||{}).value, mf:(ov.querySelector('#libAddMf')||{}).value, mo:(ov.querySelector('#libAddModel')||{}).value };
     ov.innerHTML = '<div class="lib-panel">' +
       '<div class="lib-head"><h2>Document library</h2><button type="button" class="btn" id="libClose">Close</button></div>' +
       '<div class="lib-body">' +
@@ -827,18 +829,16 @@
         '</div>' +
         '<div class="lib-add-actions">' +
           '<label class="btn btn-primary" style="cursor:pointer;">Add files to library<input type="file" id="libFileInput" multiple style="display:none;" /></label>' +
-          '<span class="lib-row-meta">Up to ' + formatBytes(MAX_FILE_BYTES) + ' per file. Brand and model are applied to every file you pick.</span>' +
+          '<span class="lib-row-meta">Up to ' + formatBytes(MAX_FILE_BYTES) + ' per file. Typing a brand or model also filters the list below, and is applied to every file you add.</span>' +
         '</div>' +
         '<div class="lib-add-actions" style="margin-top:4px;">' +
           '<button type="button" class="btn" id="libImportBtn">Import from existing manuals</button>' +
           '<span class="lib-row-meta">Copies the technical data, operating manuals and warranties already uploaded in your saved manuals into the library. Nothing in the manuals is changed or removed.</span>' +
         '</div>' +
-        '<input class="lib-search" placeholder="Search brand, model or file name" style="width:100%;" />' +
         (state.libraryLoaded ? groups : '<div class="lib-empty">Loading library…</div>') +
       '</div></div>';
     ov.querySelector('#libAddKind').value = state.libFilter;
     ov.querySelector('#libAddMf').value = keep.mf || ''; ov.querySelector('#libAddModel').value = keep.mo || '';
-    var srch = ov.querySelector('.lib-search'); srch.value = keep.q || '';
     wireLibraryOverlay(ov);
   }
 
@@ -859,8 +859,10 @@
 
   function wireLibraryOverlay(ov){
     ov.querySelector('#libClose').addEventListener('click', closeLibraryOverlay);
-    var srch = ov.querySelector('.lib-search');
-    srch.addEventListener('input', function(){ var v = srch.value; renderLibraryOverlay(); var s2 = ov.querySelector('.lib-search'); s2.focus(); s2.setSelectionRange(v.length, v.length); });
+    ['libAddMf','libAddModel'].forEach(function(id){
+      var el = ov.querySelector('#' + id);
+      el.addEventListener('input', function(){ var v = el.value; renderLibraryOverlay(); var e2 = ov.querySelector('#' + id); e2.focus(); e2.setSelectionRange(v.length, v.length); });
+    });
     ov.querySelector('#libFileInput').addEventListener('change', async function(ev){
       var files = Array.prototype.slice.call(ev.target.files || []); ev.target.value = '';
       if (!files.length) return;
